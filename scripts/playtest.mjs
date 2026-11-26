@@ -22,89 +22,15 @@ const PORT = 8775;
 const CDP_PORT = 9235;
 
 const PRESETS = [
-  {
-    key: 'cannon',
-    name: '① 平滑バレル・火薬砲',
-    frames: [24, 54, 120], // 0.4s, 0.9s, 2.0s
-    check(init, snaps) {
-      const fin = snaps[snaps.length - 1];
-      const issues = [];
-      if (fin.stats.maxSpeed < 250) issues.push(`弾速が低すぎる (maxSpeed=${fin.stats.maxSpeed} < 250)`);
-      // 弾(slick)が右側(x>650)まで飛ぶか、または標的(light)が大きく崩れたか
-      const slickMovedRight = snaps.some(s => s.bodies.some(b => b.mats.slick && b.x > 600));
-      const targetDisturbed = fin.bodies.some(b => b.mats.light && (b.x > 870 || Math.abs(b.vx) > 40 || b.y > 460)) || fin.stats.brokenBonds > 0 || fin.stats.destroyedTris > 0;
-      if (!slickMovedRight && !targetDisturbed) issues.push('砲弾が標的タワーに到達・着弾していない');
-      return issues;
-    }
-  },
-  {
-    key: 'recoilless',
-    name: '② 楔（くさび）弾＆無反動砲',
-    frames: [24, 54, 120],
-    check(init, snaps) {
-      const fin = snaps[snaps.length - 1];
-      const issues = [];
-      if (fin.stats.maxSpeed < 220) issues.push(`弾速が低すぎる (maxSpeed=${fin.stats.maxSpeed} < 220)`);
-      const slickFired = snaps.some(s => s.bodies.some(b => b.mats.slick && b.x > 550));
-      if (!slickFired) issues.push('楔弾が十分に前進していない');
-      return issues;
-    }
-  },
-  {
-    key: 'ricochet',
-    name: '③ 60°斜面バウンド跳弾砲',
-    frames: [30, 72, 140],
-    check(init, snaps) {
-      const fin = snaps[snaps.length - 1];
-      const issues = [];
-      if (fin.stats.maxSpeed < 200) issues.push(`初速が低すぎる (maxSpeed=${fin.stats.maxSpeed} < 200)`);
-      // 跳弾して弾性ランプから空中へ跳ね返ったか（初期y=382より上へ跳ね上がり）
-      const bounced = snaps.some(s => s.bodies.some(b => b.mats.elastic && b.totalTris === 6 && b.minY !== null && b.minY < 355 && b.x > 350));
-      if (!bounced) issues.push('斜面で十分に上方向へ跳弾していない');
-      return issues;
-    }
-  },
-  {
-    key: 'rocket',
-    name: '④ ノズル形状・推進ロケット',
-    frames: [36, 90, 160],
-    check(init, snaps) {
-      const fin = snaps[snaps.length - 1];
-      const issues = [];
-      if (fin.stats.maxSpeed < 120) issues.push(`ロケットの加速が不足 (maxSpeed=${fin.stats.maxSpeed} < 120)`);
-      const initX = init.bodies[0]?.x || 150;
-      const maxX = Math.max(...snaps.flatMap(s => s.bodies.filter(b => b.mats.energy_sustained || b.mats.light).map(b => b.x)), 0);
-      const minY = Math.min(...snaps.flatMap(s => s.bodies.filter(b => b.mats.energy_sustained || b.mats.light).map(b => b.y)), 999);
-      if (maxX - initX < 120 && minY > 300) issues.push(`ロケットの推進移動量が小さすぎる (dx=${Math.round(maxX - initX)}, minY=${Math.round(minY)})`);
-      return issues;
-    }
-  },
-  {
-    key: 'rupture',
-    name: '⑤ 薄肉ケーシング暴発テスト',
-    frames: [18, 48, 100],
-    check(init, snaps) {
-      const fin = snaps[snaps.length - 1];
-      const issues = [];
-      if (fin.stats.brokenBonds === 0 && fin.stats.destroyedTris === 0) {
-        issues.push('薄肉ケーシングが暴発・破断していない (brokenBonds=0, destroyedTris=0)');
-      }
-      return issues;
-    }
-  },
-  {
-    key: 'catapult',
-    name: '⑥ 平板ビーム＆三角支点投石機',
-    frames: [30, 75, 140],
-    check(init, snaps) {
-      const fin = snaps[snaps.length - 1];
-      const issues = [];
-      if (fin.stats.maxSpeed < 100) issues.push(`投石機の射出速度が不足 (maxSpeed=${fin.stats.maxSpeed} < 100)`);
-      const launched = snaps.some(s => s.bodies.some(b => b.x > 480 && b.y < 420));
-      if (!launched) issues.push('投石機の飛翔体が右上方へ十分に射出されていない');
-      return issues;
-    }
-  }
+  { key: 'cannon', name: '① 火薬砲 — 装甲タワー粉砕', frames: [24, 60, 140] },
+  { key: 'recoilless', name: '② 無反動楔砲 — 背面保護・精密貫通', frames: [24, 60, 140] },
+  { key: 'ricochet', name: '③ 60°跳弾砲 — 高壁バンクショット', frames: [30, 72, 140] },
+  { key: 'mortar', name: '④ 60°迫撃砲 — 要塞越え曲射爆撃', frames: [24, 72, 160] },
+  { key: 'rocket', name: '⑤ 推進ロケット — 遠距離連続加速', frames: [36, 90, 160] },
+  { key: 'bunker_buster', name: '⑥ 衝撃起爆・榴弾砲 — 重装甲内部爆破', frames: [24, 60, 140] },
+  { key: 'scatter', name: '⑦ 3連散弾砲 — 広域マルチ標的掃射', frames: [24, 60, 140] },
+  { key: 'catapult', name: '⑧ 三角支点投石機 — てこ曲射攻城', frames: [30, 75, 140] },
+  { key: 'rupture', name: '⑨ 薄肉ケーシング — 耐圧暴発実験', frames: [18, 48, 100] }
 ];
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -187,17 +113,19 @@ async function run() {
         await shot(`${p.key}_${i + 1}_t${snap.simTime}s.png`);
       }
 
-      const issues = p.check(init, snaps);
+      const fin = snaps[snaps.length - 1];
+      const issues = [];
+      if (!fin.stageCleared) issues.push('STAGE CLEAR 未達成');
       const anyNaN = snaps.some(s => s.hasNaN);
       const anyTunnel = snaps.some(s => s.tunneled);
       if (anyNaN) issues.unshift('CRITICAL: NaN/Infinity 座標が発生');
       if (anyTunnel) issues.unshift('CRITICAL: 地面すり抜け（トンネリング）が発生');
 
-      const fin = snaps[snaps.length - 1];
       results.push({
         key: p.key,
         name: p.name,
         pass: issues.length === 0,
+        clearTime: fin.stageClearTime,
         issues,
         stats: fin.stats,
         bodyCount: fin.bodyCount,
@@ -205,12 +133,11 @@ async function run() {
       });
     }
 
-    console.log('\n=== HexaBallistica 自動プレイテスト結果 ===');
+    console.log('\n=== HexaBallistica 全9兵器＆ステージ 自動プレイテスト結果 ===');
     for (const r of results) {
-      const badge = r.pass ? 'PASS' : 'FAIL';
-      console.log(`[${badge}] ${r.name} | maxSpd=${r.stats.maxSpeed} broken=${r.stats.brokenBonds} destroyed=${r.stats.destroyedTris} peakE=${r.stats.peakEnergy} bodies=${r.bodyCount}`);
+      const badge = r.pass ? `CLEAR (${r.clearTime}s)` : 'FAIL';
+      console.log(`[${badge.padEnd(13)}] ${r.name} | maxSpd=${r.stats.maxSpeed} broken=${r.stats.brokenBonds} destroyed=${r.stats.destroyedTris} bodies=${r.bodyCount}`);
       if (r.issues.length) r.issues.forEach(i => console.log(`   ↳ ${i}`));
-      if (r.hints.length) console.log(`   ↳ Advisor: ${r.hints.join(' / ')}`);
     }
     if (runtimeErrors.length) {
       console.log('\nRUNTIME ERRORS:', runtimeErrors);

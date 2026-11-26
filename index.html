@@ -158,13 +158,16 @@
     <!-- 中央（タブレット・PC用サンプル選択） -->
     <div class="hidden md:flex flex-1 max-w-[260px] items-center">
       <select id="presetSelect" class="w-full h-9 bg-slate-900 border border-slate-700/80 hover:border-slate-500 rounded-lg px-2.5 text-xs font-medium text-slate-100 cursor-pointer focus:outline-none focus:border-cyan-400 truncate">
-        <option value="" disabled selected>サンプルを読み込む...</option>
-        <option value="cannon">① 平滑バレル・火薬砲</option>
-        <option value="recoilless">② 楔（くさび）弾＆無反動砲</option>
-        <option value="ricochet">③ 60°斜面バウンド跳弾砲</option>
-        <option value="rocket">④ ノズル形状・推進ロケット</option>
-        <option value="rupture">⑤ 薄肉ケーシング暴発テスト</option>
-        <option value="catapult">⑥ 平板ビーム＆三角支点投石機</option>
+        <option value="" disabled selected>兵器＆ステージを選択...</option>
+        <option value="cannon">① 火薬砲 — 装甲タワー粉砕</option>
+        <option value="recoilless">② 無反動楔砲 — 背面保護・精密貫通</option>
+        <option value="ricochet">③ 60°跳弾砲 — 高壁バンクショット</option>
+        <option value="mortar">④ 60°迫撃砲 — 要塞越え曲射爆撃</option>
+        <option value="rocket">⑤ 推進ロケット — 遠距離連続加速</option>
+        <option value="bunker_buster">⑥ 衝撃起爆・榴弾砲 — 重装甲内部爆破</option>
+        <option value="scatter">⑦ 3連散弾砲 — 広域マルチ標的掃射</option>
+        <option value="catapult">⑧ 三角支点投石機 — てこ曲射攻城</option>
+        <option value="rupture">⑨ 薄肉ケーシング — 耐圧暴発実験</option>
       </select>
     </div>
 
@@ -210,6 +213,12 @@
           <button id="btnBondJoin" class="ui-btn h-8 px-2.5 rounded-lg text-xs font-bold border border-slate-700 bg-slate-900 text-slate-300 hover:text-white">つなぐ</button>
           <div class="w-px h-4 bg-slate-700 mx-0.5"></div>
           <button id="btnBondSplitMat" class="ui-btn h-8 px-2.5 rounded-lg text-xs font-bold border border-amber-400/50 bg-amber-500/15 hover:bg-amber-500/25 text-amber-200">異素材を一括分離</button>
+        </div>
+
+        <!-- ステージ目標＆クリアバッジ -->
+        <div id="stageGoalPill" class="hidden items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-950/88 border border-amber-500/40 backdrop-blur-sm text-[11px] text-amber-200 max-w-full">
+          <span id="stageGoalBadge" class="font-mono-tech text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 shrink-0">GOAL</span>
+          <span id="stageGoalText" class="font-medium truncate"></span>
         </div>
 
         <!-- 実行モード結果サマリー＆前回差分 -->
@@ -379,13 +388,16 @@
         <div class="space-y-1.5 md:hidden">
           <div class="text-[11px] font-bold text-slate-400">サンプル設計</div>
           <select id="presetSelectMobile" class="w-full h-10 bg-slate-950 border border-slate-700 rounded-xl px-3 text-xs font-medium text-slate-100 focus:outline-none focus:border-cyan-400">
-            <option value="" disabled selected>サンプルを読み込む...</option>
-            <option value="cannon">① 平滑バレル・火薬砲</option>
-            <option value="recoilless">② 楔（くさび）弾＆無反動砲</option>
-            <option value="ricochet">③ 60°斜面バウンド跳弾砲</option>
-            <option value="rocket">④ ノズル形状・推進ロケット</option>
-            <option value="rupture">⑤ 薄肉ケーシング暴発テスト</option>
-            <option value="catapult">⑥ 平板ビーム＆三角支点投石機</option>
+            <option value="" disabled selected>兵器＆ステージを選択...</option>
+            <option value="cannon">① 火薬砲 — 装甲タワー粉砕</option>
+            <option value="recoilless">② 無反動楔砲 — 背面保護・精密貫通</option>
+            <option value="ricochet">③ 60°跳弾砲 — 高壁バンクショット</option>
+            <option value="mortar">④ 60°迫撃砲 — 要塞越え曲射爆撃</option>
+            <option value="rocket">⑤ 推進ロケット — 遠距離連続加速</option>
+            <option value="bunker_buster">⑥ 衝撃起爆・榴弾砲 — 重装甲内部爆破</option>
+            <option value="scatter">⑦ 3連散弾砲 — 広域マルチ標的掃射</option>
+            <option value="catapult">⑧ 三角支点投石機 — てこ曲射攻城</option>
+            <option value="rupture">⑨ 薄肉ケーシング — 耐圧暴発実験</option>
           </select>
         </div>
 
@@ -1396,6 +1408,19 @@
           jamPoint: null
         };
 
+        // 発射側（大型剛体または左側）とは別に、小型飛翔体に仕込まれた火薬は「衝撃起爆弾頭」として未点火のまま維持！
+        const energyBodies = this.bodies.filter(b => b.tris.some(tr => MATERIALS[tr.matId].kind === 'energy'));
+        if (autoIgnite && energyBodies.length >= 2) {
+          const leftmostX = Math.min(...energyBodies.map(b => b.x));
+          for (const b of energyBodies) {
+            if (b.tris.length <= 14 && b.x > leftmostX + 35) {
+              for (const tr of b.tris) {
+                if (MATERIALS[tr.matId].kind === 'energy') tr.ignited = false;
+              }
+            }
+          }
+        }
+
         // 初期静止支持チェック：地面から直接/間接に水平支持されており火薬を含まない剛体は初期スリープ
         // （標的タワーが着弾前に自重で微動・沈み込みするのを完全防止。衝突・圧力・支持喪失で即起床）
         const supportedSet = new Set();
@@ -1992,7 +2017,7 @@
       applyImpactDamage(body, tri, impactSpd, px, py) {
         const mat = MATERIALS[tri.matId];
         // 衝撃による火薬・推進剤の起爆！
-        if (mat.kind === 'energy' && !tri.ignited && tri.energyLeft > 0 && impactSpd > 140) {
+        if (mat.kind === 'energy' && !tri.ignited && tri.energyLeft > 0 && impactSpd > 105) {
           tri.ignited = true;
           if (this.diag) {
             this.diag.ignitedCount++;
@@ -2355,6 +2380,11 @@
       bondStroke: [],
       bondHitKeys: new Set(),
       bondSparks: [],
+      // ステージクリア判定状態
+      currentGoal: null,
+      stageCleared: false,
+      stageClearTime: null,
+      stageTargetsInit: [],
       // ブループリント名
       currentName: '平滑バレル・火薬砲'
     };
@@ -2474,8 +2504,12 @@
           ...bandLine(11, 200, 260, 'slick')
         ];
         return {
-          name: '平滑バレル・火薬砲',
+          name: '① 火薬砲 — 装甲タワー粉砕',
           autoIgnite: true,
+          goal: {
+            label: '右側の装甲タワーを撃破せよ',
+            zone: { x1: 745, y1: 295, x2: 875, y2: 486 }
+          },
           ...buildGroupedPreset([gunBody, shell, ...makeFlatTargetTower(765, 855, 7)])
         };
       }
@@ -2501,8 +2535,12 @@
           [6, 6, 0, 'dense'], [6, 6, 5, 'dense']
         ];
         return {
-          name: '楔弾＆無反動バレル砲',
+          name: '② 無反動楔砲 — 背面保護・精密貫通',
           autoIgnite: true,
+          goal: {
+            label: '無反動で右側のタワーを撃破せよ',
+            zone: { x1: 755, y1: 295, x2: 880, y2: 486 }
+          },
           ...buildGroupedPreset([gunBody, wedgeShell, ...makeFlatTargetTower(775, 860, 7)])
         };
       }
@@ -2519,7 +2557,6 @@
           ...hexGroup(6, 2, 'energy_pulse')
         ];
         const ball = hexGroup(6, 4, 'elastic');
-        // 60°反射斜面（一体結合の弾性ランプ）＋中央障害壁
         const ramp = [
           ...bandLine(15, 455, 585, 'dense'),
           ...bandLine(14, 480, 585, 'elastic'),
@@ -2535,14 +2572,59 @@
           ...bandLine(11, 625, 675, 'dense')
         ];
         return {
-          name: '60°斜面バウンド跳弾砲',
+          name: '③ 60°跳弾砲 — 高壁バンクショット',
           autoIgnite: true,
+          goal: {
+            label: '弾性ランプで高弾道跳弾を決めよ',
+            mode: 'ricochet',
+            zone: { x1: 455, y1: 240, x2: 600, y2: 486 }
+          },
           ...buildGroupedPreset([gunBody, ball, ramp, wall, ...makeFlatTargetTower(805, 895, 6)])
         };
       }
 
+      if (key === 'mortar') {
+        // ④ 60°迫撃砲・曲射臼砲：目の前の重装甲要塞壁の上を曲射で越えて奥の標的を撃破！
+        const mortarBody = [
+          ...bandLine(15, 65, 300, 'dense'),
+          ...bandLine(14, 65, 300, 'dense'),
+          ...bandLine(13, 65, 145, 'dense'),
+          ...bandLine(12, 65, 135, 'dense'),
+          ...bandLine(11, 80, 150, 'dense'),
+          ...bandLine(10, 95, 165, 'dense'),
+          ...bandLine(13, 215, 295, 'dense'),
+          ...bandLine(12, 230, 305, 'dense'),
+          ...bandLine(11, 245, 315, 'dense'),
+          ...hexGroup(6, 3, 'energy_pulse'),
+          ...hexGroup(6, 4, 'energy_pulse')
+        ];
+        const mortarShell = [
+          ...bandLine(11, 165, 225, 'slick'),
+          ...bandLine(10, 175, 235, 'dense')
+        ];
+        const fortressWall = [
+          ...bandLine(15, 450, 520, 'dense'),
+          ...bandLine(14, 450, 520, 'dense'),
+          ...bandLine(13, 450, 520, 'dense'),
+          ...bandLine(12, 450, 520, 'dense'),
+          ...bandLine(11, 450, 520, 'dense'),
+          ...bandLine(10, 450, 520, 'dense'),
+          ...bandLine(9,  450, 520, 'dense')
+        ];
+        return {
+          name: '④ 60°迫撃砲 — 要塞越え曲射爆撃',
+          autoIgnite: true,
+          goal: {
+            label: '重装甲壁の上を曲射弾道で打ち上げよ',
+            mode: 'mortar',
+            zone: { x1: 685, y1: 300, x2: 830, y2: 486 }
+          },
+          ...buildGroupedPreset([mortarBody, mortarShell, fortressWall, ...makeFlatTargetTower(705, 805, 6)])
+        };
+      }
+
       if (key === 'rocket') {
-        // ④ ノズル形状・推進ロケット：尖ったノーズ＋末広がりノズル
+        // ⑤ ノズル形状・推進ロケット：尖ったノーズ＋末広がりノズル
         const rocket = [
           ...bandLine(10, 215, 240, 'dense'),
           ...bandLine(11, 185, 270, 'light'),
@@ -2557,14 +2639,86 @@
           ...bandLine(15, 275, 300, 'light')
         ];
         return {
-          name: 'ノズル形状・推進ロケット',
+          name: '⑤ 推進ロケット — 遠距離連続加速',
           autoIgnite: true,
+          goal: {
+            label: '推進剤の連続燃焼で加速・発進せよ',
+            mode: 'speed',
+            targetSpeed: 180
+          },
           ...buildGroupedPreset([rocket, ...makeFlatTargetTower(740, 825, 6)])
         };
       }
 
+      if (key === 'bunker_buster') {
+        // ⑥ 衝撃起爆・徹甲榴弾砲：後部火薬で発射し、弾頭内の未点火火薬が着弾衝撃で二次起爆！
+        const gunBody = [
+          ...bandLine(15, 75, 295, 'dense'),
+          ...bandLine(14, 75, 295, 'dense'),
+          ...bandLine(13, 75, 375, 'dense'),
+          ...bandLine(12, 75, 130, 'dense'),
+          ...bandLine(11, 75, 130, 'dense'),
+          ...bandLine(10, 75, 375, 'dense'),
+          ...hexGroup(6, 2, 'energy_pulse')
+        ];
+        const heShell = [
+          ...bandLine(12, 200, 260, 'slick'),
+          ...bandLine(11, 200, 260, 'slick'),
+          [5, 5, 1, 'energy_pulse'], [6, 5, 4, 'energy_pulse']
+        ];
+        const bunkerRoof = [
+          ...bandLine(9, 710, 895, 'dense'),
+          ...bandLine(10, 855, 895, 'dense'),
+          ...bandLine(11, 855, 895, 'dense'),
+          ...bandLine(12, 855, 895, 'dense'),
+          ...bandLine(13, 855, 895, 'dense'),
+          ...bandLine(14, 855, 895, 'dense'),
+          ...bandLine(15, 855, 895, 'dense')
+        ];
+        return {
+          name: '⑥ 衝撃起爆・榴弾砲 — 重装甲内部爆破',
+          autoIgnite: true,
+          goal: {
+            label: 'バンカー内部へ撃ち込み衝撃起爆で爆破せよ',
+            zone: { x1: 715, y1: 310, x2: 850, y2: 486 }
+          },
+          ...buildGroupedPreset([gunBody, heShell, bunkerRoof, ...makeFlatTargetTower(735, 825, 5)])
+        };
+      }
+
+      if (key === 'scatter') {
+        // ⑦ 3連散弾・クラスター砲：1門の薬室から複数の独立弾丸を一斉射出して前後2タワーを掃射！
+        const gunBody = [
+          ...bandLine(15, 65, 300, 'dense'),
+          ...bandLine(14, 65, 300, 'dense'),
+          ...bandLine(13, 65, 355, 'dense'),
+          ...bandLine(12, 65, 120, 'dense'),
+          ...bandLine(11, 65, 120, 'dense'),
+          ...bandLine(10, 65, 120, 'dense'),
+          ...bandLine(9,  65, 355, 'dense'),
+          ...hexGroup(6, 2, 'energy_pulse'),
+          ...hexGroup(5, 2, 'energy_pulse')
+        ];
+        const pellet1 = bandLine(12, 200, 260, 'slick');
+        const pellet2 = bandLine(11, 200, 260, 'slick');
+        const pellet3 = bandLine(10, 200, 260, 'slick');
+        return {
+          name: '⑦ 3連散弾砲 — 広域マルチ標的掃射',
+          autoIgnite: true,
+          goal: {
+            label: '前後2つの標的タワーを散弾で一掃せよ',
+            zone: { x1: 600, y1: 310, x2: 910, y2: 486 }
+          },
+          ...buildGroupedPreset([
+            gunBody, pellet1, pellet2, pellet3,
+            ...makeFlatTargetTower(620, 700, 5),
+            ...makeFlatTargetTower(805, 890, 5)
+          ])
+        };
+      }
+
       if (key === 'rupture') {
-        // ⑤ 薄肉ケーシング暴発テスト：軽質材で2倍火薬を囲み過圧破壊を観察
+        // ⑨ 薄肉ケーシング暴発テスト：軽質材で2倍火薬を囲み過圧破壊を観察
         const weakGun = [
           ...bandLine(15, 110, 320, 'light'),
           ...bandLine(14, 110, 320, 'light'),
@@ -2580,13 +2734,17 @@
           ...bandLine(11, 275, 330, 'dense')
         ];
         return {
-          name: '薄肉ケーシング暴発テスト',
+          name: '⑨ 薄肉ケーシング — 耐圧暴発実験',
           autoIgnite: true,
+          goal: {
+            label: '過圧による薄肉ケーシング破断を観察せよ',
+            mode: 'rupture'
+          },
           ...buildGroupedPreset([weakGun, heavyPlug])
         };
       }
 
-      // ⑥ 平板ビーム＆三角支点投石機
+      // ⑧ 平板ビーム＆三角支点投石機
       const fulcrum = [
         ...bandLine(15, 355, 420, 'dense'),
         ...bandLine(14, 370, 405, 'dense')
@@ -2599,8 +2757,13 @@
         ...bandLine(4, 235, 305, 'dense')
       ];
       return {
-        name: '平板ビーム＆三角支点投石機',
+        name: '⑧ 三角支点投石機 — てこ曲射攻城',
         autoIgnite: false,
+        goal: {
+          label: 'てこの原理で弾丸を右上方へ射出せよ',
+          mode: 'catapult',
+          zone: { x1: 760, y1: 310, x2: 885, y2: 486 }
+        },
         ...buildGroupedPreset([fulcrum, beam, payload, counterweight, ...makeFlatTargetTower(780, 865, 5)])
       };
     }
@@ -2644,6 +2807,9 @@
       btnBondCut: document.getElementById('btnBondCut'),
       btnBondJoin: document.getElementById('btnBondJoin'),
       btnBondSplitMat: document.getElementById('btnBondSplitMat'),
+      stageGoalPill: document.getElementById('stageGoalPill'),
+      stageGoalBadge: document.getElementById('stageGoalBadge'),
+      stageGoalText: document.getElementById('stageGoalText'),
       simResultBanner: document.getElementById('simResultBanner'),
       simSummarySpeed: document.getElementById('simSummarySpeed'),
       simDiffSpeed: document.getElementById('simDiffSpeed'),
@@ -4389,14 +4555,30 @@
 
       if (live) {
         state.paused = false;
+        state.stageCleared = false;
+        state.stageClearTime = null;
         el.toolHintPill.classList.add('hidden');
         PhysicsAdvisor.reset(true);
         PhysicsEngine.initFromDesign(state.tris, state.severedBonds, state.autoIgnite);
+        // ステージ目標ゾーン内の初期標的スラブを記録
+        state.stageTargetsInit = [];
+        if (state.currentGoal && state.currentGoal.zone) {
+          const z = state.currentGoal.zone;
+          for (const b of PhysicsEngine.bodies) {
+            if (b.x >= z.x1 && b.x <= z.x2 && b.y >= z.y1 && b.y <= z.y2 && b.tris.length <= 12) {
+              state.stageTargetsInit.push({ id: b.id, x: b.x, y: b.y });
+            }
+          }
+        }
+        syncStageGoalUI();
         TutorialMgr.checkProgress();
       } else {
         state.paused = false;
+        state.stageCleared = false;
+        state.stageClearTime = null;
         PhysicsAdvisor.cardOpen = false;
         PhysicsAdvisor.syncUI();
+        syncStageGoalUI();
       }
 
       el.btnPause.textContent = state.paused ? '▶' : '⏸';
@@ -4414,13 +4596,73 @@
       state.severedBonds = p.severed;
       state.autoIgnite = p.autoIgnite;
       state.currentName = p.name;
+      state.currentGoal = p.goal || null;
+      state.stageCleared = false;
+      state.stageClearTime = null;
       state.prevSimResult = null;
       el.bpNameInput.value = p.name;
       syncAutoIgniteUI();
+      syncStageGoalUI();
       PhysicsAdvisor.reset(true);
       updateTelemetryHUD();
       requestAnimationFrame(() => fitContentToView(true));
-      showToast(`サンプル「${p.name}」を読み込みました`, 'success');
+      showToast(`「${p.name}」を読み込みました`, 'success');
+    }
+
+    function syncStageGoalUI() {
+      if (!el.stageGoalPill) return;
+      if (!state.currentGoal || TutorialMgr.active) {
+        el.stageGoalPill.classList.add('hidden');
+        el.stageGoalPill.classList.remove('inline-flex');
+        return;
+      }
+      el.stageGoalPill.classList.remove('hidden');
+      el.stageGoalPill.classList.add('inline-flex');
+      if (state.stageCleared) {
+        el.stageGoalPill.className = 'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-950/90 border border-emerald-400/70 backdrop-blur-sm text-[11px] text-emerald-200 max-w-full';
+        el.stageGoalBadge.className = 'font-mono-tech text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-400 text-slate-950 shrink-0';
+        el.stageGoalBadge.textContent = 'CLEAR!';
+        el.stageGoalText.textContent = `${state.currentGoal.label} (${(state.stageClearTime || 0).toFixed(2)}s)`;
+      } else {
+        el.stageGoalPill.className = 'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-950/88 border border-amber-500/40 backdrop-blur-sm text-[11px] text-amber-200 max-w-full';
+        el.stageGoalBadge.className = 'font-mono-tech text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 shrink-0';
+        el.stageGoalBadge.textContent = 'GOAL';
+        el.stageGoalText.textContent = state.currentGoal.label;
+      }
+    }
+
+    function evaluateStageGoal() {
+      if (state.mode !== 'sim' || !state.currentGoal || state.stageCleared) return;
+      const g = state.currentGoal;
+      let ok = false;
+      if (g.mode === 'rupture') {
+        ok = PhysicsEngine.stats.brokenBonds > 0 || PhysicsEngine.stats.destroyedTris >= 3;
+      } else if (g.mode === 'speed') {
+        ok = PhysicsEngine.stats.maxSpeed >= (g.targetSpeed || 180);
+      } else if (g.mode === 'ricochet') {
+        ok = PhysicsEngine.bodies.some(b => b.tris.length === 6 && b.tris[0].matId === 'elastic' && b.x > 350 && b.aabb.minY < 355);
+      } else if (g.mode === 'mortar') {
+        ok = PhysicsEngine.bodies.some(b => b.tris.length <= 16 && b.x > 260 && b.aabb.minY < 260);
+      } else if (g.mode === 'catapult') {
+        ok = PhysicsEngine.bodies.some(b => b.tris.length <= 12 && b.x > 480 && b.y < 420);
+      } else if (state.stageTargetsInit.length > 0) {
+        let hitCount = 0;
+        for (const t0 of state.stageTargetsInit) {
+          const cur = PhysicsEngine.bodies.find(b => b.id === t0.id);
+          if (!cur) { hitCount++; continue; }
+          const dist = Math.hypot(cur.x - t0.x, cur.y - t0.y);
+          const rotDeg = Math.abs(cur.angle * 180 / Math.PI);
+          if (dist > 22 || rotDeg > 14) hitCount++;
+        }
+        ok = hitCount >= Math.max(1, Math.ceil(state.stageTargetsInit.length * 0.35)) || PhysicsEngine.stats.destroyedTris >= 1;
+      }
+      if (ok) {
+        state.stageCleared = true;
+        state.stageClearTime = PhysicsEngine.simTime;
+        syncStageGoalUI();
+        SoundFX.chime();
+        showToast(`STAGE CLEAR! (${PhysicsEngine.simTime.toFixed(2)}s)`, 'success');
+      }
     }
 
     function syncAutoIgniteUI() {
@@ -5248,6 +5490,7 @@
           PhysicsEngine.step(stepDt);
           rem -= stepDt;
         }
+        evaluateStageGoal();
         advisorTick += rawDt;
         if (advisorTick >= 0.18) {
           advisorTick = 0;
@@ -5323,6 +5566,7 @@
         stepFrames(n = 60, dt = 1 / 60) {
           for (let i = 0; i < n; i++) {
             PhysicsEngine.step(dt);
+            evaluateStageGoal();
           }
           PhysicsAdvisor.evaluate();
           updateTelemetryHUD();
@@ -5376,6 +5620,8 @@
           return {
             mode: state.mode,
             simTime: Math.round(PhysicsEngine.simTime * 100) / 100,
+            stageCleared: state.stageCleared,
+            stageClearTime: state.stageClearTime !== null ? Math.round(state.stageClearTime * 100) / 100 : null,
             hasNaN,
             tunneled,
             stats: {
