@@ -1536,7 +1536,7 @@
               const pSample = FieldEngine.sampleAt(mx + nx * 13, my + ny * 13);
               if (pSample > maxLocalP) maxLocalP = pSample;
               if (pSample > 0.4) {
-                const forceMag = pSample * len * 4.2;
+                const forceMag = pSample * len * 5.8;
                 const dfx = -nx * forceMag;
                 const dfy = -ny * forceMag;
                 fx += dfx;
@@ -1590,7 +1590,7 @@
           body.omega = Math.max(-18, Math.min(18, body.omega));
         }
 
-        // 3. 連続移動＆衝突解決（3サブステップで高速弾のすり抜け防止）
+        // 3. 連続移動＆衝突解決（3サブステップ × 3反復ボトムアップ解決で多段積層を完全安定化）
         const subSteps = 3;
         const subDt = dt / subSteps;
         for (let s = 0; s < subSteps; s++) {
@@ -1600,8 +1600,10 @@
             body.angle += body.omega * subDt;
             this.updateBodyWorldVerts(body);
           }
-          this.resolveWorldBounds();
-          this.resolveBodyCollisions();
+          for (let iter = 0; iter < 3; iter++) {
+            this.resolveWorldBounds();
+            this.resolveBodyCollisions(iter === 0);
+          }
         }
 
         // 4. 破壊・火薬消滅・構造分離処理
@@ -1713,12 +1715,14 @@
         }
       },
 
-      resolveBodyCollisions() {
-        const n = this.bodies.length;
-        for (let i = 0; i < n; i++) {
-          const A = this.bodies[i];
-          for (let j = i + 1; j < n; j++) {
-            const B = this.bodies[j];
+      resolveBodyCollisions(allowDamage = true) {
+        // 下にある剛体から順に解決（多段タワーの沈み込み・すり抜けを防止）
+        const order = this.bodies.map((_, idx) => idx).sort((a, b) => this.bodies[b].y - this.bodies[a].y);
+        const n = order.length;
+        for (let oi = 0; oi < n; oi++) {
+          const A = this.bodies[order[oi]];
+          for (let oj = oi + 1; oj < n; oj++) {
+            const B = this.bodies[order[oj]];
             if (A.aabb.maxX < B.aabb.minX || A.aabb.minX > B.aabb.maxX ||
                 A.aabb.maxY < B.aabb.minY || A.aabb.minY > B.aabb.maxY) continue;
 
@@ -1766,8 +1770,8 @@
             const bestTriA = primary.tA;
             const bestTriB = primary.tB;
 
-            // 位置補正（微小なスロップ0.22pxで静止ジッターを抑制）
-            const corr = Math.max(0, depth - 0.22) * 0.72 / totalInvMass;
+            // 位置補正（タイトなスロップ0.06pxで多段積層の沈み込みとジッターを両立防止）
+            const corr = Math.max(0, depth - 0.06) * 0.62 / totalInvMass;
             A.x -= nx * corr * A.invMass;
             A.y -= ny * corr * A.invMass;
             B.x += nx * corr * B.invMass;
@@ -1826,7 +1830,7 @@
                 B.omega *= 0.85;
               }
 
-              if (impactSpd > 85) {
+              if (allowDamage && impactSpd > 85) {
                 this.contacts.push({ x: px, y: py, power: Math.min(1, impactSpd / 400) });
                 this.applyImpactDamage(A, bestTriA, impactSpd, px, py);
                 this.applyImpactDamage(B, bestTriB, impactSpd, px, py);
@@ -2920,7 +2924,7 @@
       step: 0, // 0..4, 5=完了
       targetTopWall: [],
       chamberHex: { r: 6, c: 2 },
-      noseTris: [[6, 5, 0], [6, 5, 5]],
+      noseTris: [[5, 5, 1], [6, 5, 4]],
       shellKeys: new Set(),
 
       start() {
@@ -2982,7 +2986,7 @@
           } else if (this.step === 1) {
             placeHex(this.chamberHex.r, this.chamberHex.c, 'energy_pulse');
           } else if (this.step === 2) {
-            for (const [r, c, t] of this.noseTris) placeTriangle(r, c, t, 'dense', true);
+            for (const [r, c, t] of this.noseTris) placeTriangle(r, c, t, 'slick', true);
           } else if (this.step === 3) {
             for (const e of collectAllSharedEdges()) {
               if (e.diffMat) state.severedBonds.add(e.key);
@@ -2996,7 +3000,7 @@
           state.selectedMat = 'energy_pulse';
           state.tool = 'hex';
         } else if (this.step === 2) {
-          state.selectedMat = 'dense';
+          state.selectedMat = 'slick';
           state.tool = 'tri';
         } else if (this.step === 3) {
           state.tool = 'bond';
@@ -5124,13 +5128,38 @@
       }
 
       // 自動プレイテスト・物理デバッグ用API
+      const debugEventLog = [];
+      PhysicsEngine.eventListeners.push((msg, type, time) => {
+        debugEventLog.push({ t: Math.round(time * 100) / 100, type, msg });
+        if (debugEventLog.length > 100) debugEventLog.shift();
+      });
+
       window.__HB_DEBUG__ = {
         loadPreset(key) {
           loadPreset(key);
           fitContentToView(true);
           drawWorld(0);
         },
+        startTutorial() {
+          TutorialMgr.start();
+          fitContentToView(true);
+          drawWorld(0);
+          return { step: TutorialMgr.step, active: TutorialMgr.active };
+        },
+        advanceTutorialStep(skipped = true) {
+          TutorialMgr.advanceStep(skipped);
+          drawWorld(0);
+          return { step: TutorialMgr.step, active: TutorialMgr.active };
+        },
+        clickSplitDifferentMaterials() {
+          splitAllDifferentMaterialBonds();
+          drawWorld(0);
+        },
+        getTutorialState() {
+          return { active: TutorialMgr.active, step: TutorialMgr.step };
+        },
         startSim() {
+          debugEventLog.length = 0;
           switchMode('sim');
           state.paused = true; // 決定論的ステップ実行のため手動制御
           drawWorld(0);
@@ -5156,10 +5185,13 @@
           let tunneled = false;
           const bodies = PhysicsEngine.bodies.map((b, idx) => {
             let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity, aliveTris = 0;
+            let hpSum = 0, maxHpSum = 0;
             const mats = {};
             for (const tr of b.tris) {
               if (tr.hp <= 0 || tr.consumed) continue;
               aliveTris++;
+              hpSum += tr.hp;
+              maxHpSum += tr.maxHp;
               mats[tr.matId] = (mats[tr.matId] || 0) + 1;
               for (const p of tr.wv) {
                 if (!Number.isFinite(p.x) || !Number.isFinite(p.y)) hasNaN = true;
@@ -5172,15 +5204,19 @@
             if (!Number.isFinite(b.x) || !Number.isFinite(b.y) || !Number.isFinite(b.vx) || !Number.isFinite(b.vy)) hasNaN = true;
             if (aliveTris > 0 && b.y > GROUND_Y + 45) tunneled = true;
             return {
+              id: b.id,
               idx,
               x: Math.round(b.x * 10) / 10,
               y: Math.round(b.y * 10) / 10,
               vx: Math.round(b.vx * 10) / 10,
               vy: Math.round(b.vy * 10) / 10,
               speed: Math.round(Math.hypot(b.vx, b.vy)),
+              angleDeg: Math.round((b.angle * 180 / Math.PI) * 10) / 10,
+              omega: Math.round(b.omega * 100) / 100,
               mass: Math.round(b.mass * 10) / 10,
               aliveTris,
               totalTris: b.tris.length,
+              hpPct: maxHpSum > 0 ? Math.round((hpSum / maxHpSum) * 100) : 0,
               mats,
               minX: Number.isFinite(minX) ? Math.round(minX) : null,
               maxX: Number.isFinite(maxX) ? Math.round(maxX) : null,
@@ -5202,7 +5238,8 @@
             },
             bodyCount: bodies.length,
             bodies,
-            hints: (PhysicsAdvisor.hints || []).map(h => h.title || h.headline || h.text || JSON.stringify(h))
+            events: [...debugEventLog],
+            hints: (PhysicsAdvisor.hints || []).map(h => h.title || h.headline || h.phenomenon || JSON.stringify(h))
           };
         }
       };
