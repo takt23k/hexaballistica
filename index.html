@@ -225,13 +225,37 @@
           <span id="stageGoalText" class="font-medium truncate"></span>
         </div>
 
-        <!-- 実行モード結果サマリー＆前回差分 -->
-        <div id="simResultBanner" class="hidden items-center gap-2.5 px-2.5 py-1.5 rounded-lg bg-slate-950/88 border border-slate-700/80 backdrop-blur-sm text-[11px] text-slate-200">
+        <!-- 実行モード結果サマリー＆前回差分＋熱・装填ゲージ -->
+        <div id="simResultBanner" class="hidden items-center gap-2 px-2.5 py-1.5 rounded-lg bg-slate-950/88 border border-slate-700/80 backdrop-blur-sm text-[11px] text-slate-200 flex-wrap">
           <span id="simClockPill" class="font-mono-tech font-bold text-cyan-300">0.00s</span>
           <span class="text-slate-600">|</span>
           <span>最高速 <b id="simSummarySpeed" class="font-mono-tech text-slate-100">0</b><span id="simDiffSpeed" class="font-mono-tech text-[10px] ml-1"></span></span>
           <span class="hidden sm:inline text-slate-600">|</span>
           <span class="hidden sm:inline">破壊 <b id="simSummaryDmg" class="font-mono-tech text-rose-300">0</b><span id="simDiffDmg" class="font-mono-tech text-[10px] ml-1"></span></span>
+          <span id="heatPillWrap" class="hidden items-center gap-1 border-l border-slate-700 pl-2">
+            <span class="text-[10px] text-slate-400">熱</span>
+            <b id="simHeatVal" class="font-mono-tech text-amber-300">0%</b>
+            <span id="simReloadVal" class="font-mono-tech text-[10px] text-emerald-300 ml-1"></span>
+          </span>
+        </div>
+
+        <!-- 防衛戦（実物理TD）ステータスバー -->
+        <div id="tdHudBar" class="hidden pointer-events-auto items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-950/92 border border-amber-500/45 backdrop-blur-sm text-[11px] flex-wrap">
+          <span class="font-bold text-amber-300">防衛戦1</span>
+          <span id="tdWaveBadge" class="font-mono-tech font-bold px-1.5 py-0.5 rounded bg-cyan-500/15 text-cyan-300 border border-cyan-500/35">W 1/3</span>
+          <span id="tdBaseHpBadge" class="font-mono-tech font-bold px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/35">拠点 100</span>
+          <span id="tdKillBadge" class="font-mono-tech font-bold px-1.5 py-0.5 rounded bg-slate-800 text-slate-200">撃破 0/8</span>
+          <select id="tdPresetPicker" class="h-6 bg-slate-900 border border-slate-700 rounded-md px-1.5 text-[11px] font-bold text-slate-100">
+            <option value="td_cheap">安価・軽質緩射砲 (低コスト)</option>
+            <option value="td_heavy">重装甲・高速連射砲 (高コスト)</option>
+            <option value="td_smart">センサー追尾・角度調整砲</option>
+            <option value="td_custom">自作設計図で出撃</option>
+          </select>
+          <div class="flex items-center bg-slate-900 rounded-md p-0.5 border border-slate-700 gap-0.5" title="連射速度（コストが低い砲身は低速にしないと過熱・疲労で破壊されます）">
+            <button data-rate="2.8" class="rate-btn ui-btn px-1.5 py-0.5 rounded text-[10px] font-bold text-slate-400">低速</button>
+            <button data-rate="1.8" class="rate-btn ui-btn px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-400 text-slate-950">標準</button>
+            <button data-rate="1.0" class="rate-btn ui-btn px-1.5 py-0.5 rounded text-[10px] font-bold text-slate-400">高速</button>
+          </div>
         </div>
       </div>
 
@@ -481,69 +505,29 @@
           <svg class="w-4 h-4 text-rose-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/></svg>
           <span class="min-w-0"><span class="block font-bold text-xs leading-tight">削り・削除</span><span class="block text-[10px] text-slate-400">三角単位で削除</span></span>
         </button>
-        <button id="btnToolBond" class="tool-chip ui-btn col-span-2 h-11 px-3 rounded-xl border border-slate-800 bg-slate-950/80 flex items-center justify-between text-left text-slate-200">
-          <span class="flex items-center gap-2 font-bold text-xs">
-            <svg class="w-4 h-4 text-cyan-300 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-            <span>接続・分離</span>
-          </span>
-          <span class="text-[11px] text-slate-400">弾や可動部品を切り離す</span>
+        <button id="btnToolBond" class="tool-chip ui-btn h-12 px-2.5 rounded-xl border border-slate-800 bg-slate-950/80 flex items-center gap-2 text-left text-slate-200">
+          <svg class="w-4 h-4 text-cyan-300 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+          <span class="min-w-0"><span class="block font-bold text-xs leading-tight">接続・分離</span><span class="block text-[10px] text-slate-400">弾や部品を切離</span></span>
+        </button>
+        <button id="btnToolWire" class="tool-chip ui-btn h-12 px-2.5 rounded-xl border border-slate-800 bg-slate-950/80 flex items-center gap-2 text-left text-slate-200">
+          <svg class="w-4 h-4 text-violet-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="19" r="2"/><circle cx="19" cy="5" r="2"/><path d="M6.5 17.5C10 14 14 10 17.5 6.5"/></svg>
+          <span class="min-w-0"><span class="block font-bold text-xs leading-tight">信号配線</span><span class="block text-[10px] text-slate-400">センサー→角度/火薬</span></span>
         </button>
       </div>
     </div>
-      <!-- 防衛戦（タワーディフェンス）専用フルスクリーンビュー -->
-      <div id="tdOverlay" class="hidden absolute inset-0 z-30 bg-[#060a12] flex flex-col">
-        <!-- TD上部ステータスバー -->
-        <div class="px-2.5 sm:px-3.5 py-2 bg-slate-950/90 border-b border-slate-800/80 flex items-center justify-between gap-2 shrink-0">
-          <div class="flex items-center gap-1.5 sm:gap-2.5 min-w-0 flex-wrap">
-            <span class="text-xs font-bold text-amber-300 whitespace-nowrap">防衛戦 1：渓谷の要塞</span>
-            <span id="tdWavePill" class="font-mono-tech text-[11px] font-bold px-2 py-0.5 rounded-md bg-cyan-500/15 border border-cyan-500/35 text-cyan-300 whitespace-nowrap">WAVE 0/3</span>
-            <span id="tdHpPill" class="font-mono-tech text-[11px] font-bold px-2 py-0.5 rounded-md bg-emerald-500/15 border border-emerald-500/35 text-emerald-300 whitespace-nowrap">拠点 100</span>
-            <span id="tdGoldPill" class="font-mono-tech text-[11px] font-bold px-2 py-0.5 rounded-md bg-amber-500/15 border border-amber-500/35 text-amber-300 whitespace-nowrap">資金 120</span>
-          </div>
-          <div class="flex items-center gap-1 shrink-0">
-            <button id="btnTdSpeed" class="ui-btn h-8 px-2.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 font-mono-tech text-xs font-bold text-slate-200">1x</button>
-            <button id="btnTdReset" class="ui-btn h-8 px-2.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs font-bold text-slate-300">やり直し</button>
-          </div>
-        </div>
 
-        <!-- TDバトルフィールドキャンバス -->
-        <div class="flex-1 min-h-0 relative overflow-hidden">
-          <canvas id="tdCanvas" class="w-full h-full cursor-pointer"></canvas>
-
-          <!-- 配置ヒント＆勝敗バナー -->
-          <div id="tdHintBanner" class="absolute top-2.5 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-xl bg-slate-950/88 border border-slate-700/80 backdrop-blur-sm text-[11px] sm:text-xs text-slate-200 text-center max-w-[92vw] pointer-events-none">
-            下の兵器を選び、光る配置パッドをタップして設置 →「WAVE開始」で防衛！
-          </div>
-
-          <div id="tdResultModal" class="hidden absolute inset-0 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-4 z-20">
-            <div class="bg-slate-900 border border-slate-700 rounded-2xl p-5 max-w-sm w-full text-center space-y-3 shadow-2xl">
-              <div id="tdResultBadge" class="inline-block font-mono-tech text-xs font-extrabold px-3 py-1 rounded-full bg-emerald-400 text-slate-950">STAGE 1 CLEAR!</div>
-              <h3 id="tdResultTitle" class="text-lg font-extrabold text-white">渓谷の要塞を防衛しました！</h3>
-              <p id="tdResultDesc" class="text-xs text-slate-300 leading-relaxed"></p>
-              <div class="flex gap-2 pt-1">
-                <button id="btnTdRetry" class="ui-btn flex-1 h-11 rounded-xl bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-extrabold text-xs">もう一度プレイ</button>
-                <button id="btnTdBackToDesign" class="ui-btn flex-1 h-11 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-100 font-bold text-xs">設計工房へ戻る</button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- TD下部兵器配置ドック -->
-        <div class="bg-slate-950/95 border-t border-slate-800/80 px-2.5 sm:px-3.5 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] shrink-0">
-          <div class="max-w-[960px] mx-auto flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-            <!-- 配置可能な兵器カード（自作設計図＋デフォルト兵器4種） -->
-            <div id="tdWeaponPalette" class="grid grid-cols-5 gap-1 sm:gap-1.5 flex-1"></div>
-            <!-- WAVE開始ボタン -->
-            <div class="flex items-center gap-1.5 shrink-0">
-              <button id="btnTdSell" class="hidden ui-btn h-11 px-3 rounded-xl bg-rose-950/60 hover:bg-rose-900/70 border border-rose-500/50 text-rose-200 font-bold text-xs whitespace-nowrap">撤去 (+返金)</button>
-              <button id="btnTdStartWave" class="ui-btn h-11 flex-1 sm:flex-initial px-4 sm:px-5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold text-xs sm:text-sm flex items-center justify-center gap-1.5 whitespace-nowrap">
-                <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><polygon points="6 4 20 12 6 20 6 4"/></svg>
-                <span id="btnTdStartWaveLabel">WAVE 1 開始</span>
-              </button>
-            </div>
-          </div>
+    <!-- 防衛戦クリア／敗北モーダル（実物理TD用） -->
+    <div id="tdResultModal" class="hidden absolute inset-0 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-4 z-30">
+      <div class="bg-slate-900 border border-slate-700 rounded-2xl p-5 max-w-sm w-full text-center space-y-3 shadow-2xl">
+        <div id="tdResultBadge" class="inline-block font-mono-tech text-xs font-extrabold px-3 py-1 rounded-full bg-emerald-400 text-slate-950">STAGE 1 CLEAR!</div>
+        <h3 id="tdResultTitle" class="text-lg font-extrabold text-white">防衛戦 1 をクリアしました！</h3>
+        <p id="tdResultDesc" class="text-xs text-slate-300 leading-relaxed"></p>
+        <div class="flex gap-2 pt-1">
+          <button id="btnTdRetry" class="ui-btn flex-1 h-11 rounded-xl bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-extrabold text-xs">もう一度防衛</button>
+          <button id="btnTdBackToDesign" class="ui-btn flex-1 h-11 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-100 font-bold text-xs">設計を改造する</button>
         </div>
       </div>
+    </div>
 
   </main>
 
@@ -868,6 +852,24 @@
         energyPool: 100, releaseRate: 38, fieldGain: 0.78, consumeOnDetonate: false,
         color: '#9a3412', accent: '#fb923c', line: '#ea580c',
         desc: '約3秒間連続燃焼しノズル形状に応じた推力を生成'
+      },
+      sensor: {
+        id: 'sensor', kind: 'mech', short: 'センサー', name: '照準センサー',
+        density: 2.0, durability: 110, friction: 0.40, restitution: 0.15, unitCost: 2.50,
+        color: '#5b21b6', accent: '#c4b5fd', line: '#8b5cf6',
+        desc: '敵を認識し、配線先の角度調整や火薬へ信号を送る'
+      },
+      rotator: {
+        id: 'rotator', kind: 'mech', short: '角度調整', name: '角度調整モーター',
+        density: 3.0, durability: 170, friction: 0.50, restitution: 0.12, unitCost: 2.00,
+        color: '#0e7490', accent: '#67e8f9', line: '#06b6d4',
+        desc: 'センサー信号を受け、砲身の仰角を自動で調整する'
+      },
+      loader: {
+        id: 'loader', kind: 'mech', short: '装填機', name: '自動装填機',
+        density: 2.8, durability: 150, friction: 0.45, restitution: 0.14, unitCost: 2.50,
+        color: '#065f46', accent: '#6ee7b7', line: '#10b981',
+        desc: '発射後に火薬と弾丸を自動再装填（連射すると過熱・疲労）'
       }
     };
 
@@ -1324,6 +1326,70 @@
         return false;
       },
 
+      // 熱・疲労・自動装填・センサー旋回状態
+      reloadSystem: null,
+
+      spawnEnemyBody(typeKey) {
+        const defs = {
+          scout: { name: '偵察ヘキサ', mat: 'light', rows: 1, driveSpd: 56, hpMult: 0.9, baseDmg: 20, x: 935 },
+          fast:  { name: '滑性スカウト', mat: 'slick', rows: 1, driveSpd: 82, hpMult: 0.75, baseDmg: 18, x: 935 },
+          heavy: { name: '重装甲キャリア', mat: 'dense', rows: 2, driveSpd: 38, hpMult: 0.65, baseDmg: 30, x: 925 },
+          boss:  { name: '移動要塞ボス', mat: 'dense', rows: 3, driveSpd: 26, hpMult: 0.85, baseDmg: 50, x: 915 }
+        };
+        const d = defs[typeKey] || defs.scout;
+        const tris = [];
+        const baseC = 19;
+        const startR = 7 - (d.rows - 1);
+        for (let r = startR; r <= 7; r++) {
+          for (let t = 0; t < 6; t++) {
+            if (!TriHexMath.triValid(r, baseC, t)) continue;
+            const mat = MATERIALS[d.mat];
+            const cent = TriHexMath.triCentroid(r, baseC, t);
+            const verts = TriHexMath.triVertices(r, baseC, t);
+            tris.push({
+              r, c: baseC, t,
+              matId: mat.id,
+              wx: cent.x, wy: cent.y,
+              wv: verts.map(v => ({ x: v.x, y: v.y })),
+              lv: [{ x: 0, y: 0 }, { x: 0, y: 0 }, { x: 0, y: 0 }],
+              lcx: 0, lcy: 0,
+              exposed: [true, true, true],
+              hp: mat.durability * d.hpMult,
+              maxHp: mat.durability * d.hpMult,
+              energyLeft: 0, ignited: false, consumed: false, hitFlash: 0
+            });
+          }
+        }
+        if (tris.length === 0) return null;
+        const keyToIdx = new Map();
+        tris.forEach((tr, i) => keyToIdx.set(TriHexMath.triKey(tr.r, tr.c, tr.t), i));
+        const bonds = [];
+        const added = new Set();
+        for (let i = 0; i < tris.length; i++) {
+          const tr = tris[i];
+          for (const nb of TriHexMath.triNeighbors(tr.r, tr.c, tr.t)) {
+            const j = keyToIdx.get(TriHexMath.triKey(nb.r, nb.c, nb.t));
+            if (j !== undefined) {
+              tr.exposed[nb.edgeIdx] = false;
+              const bk = TriHexMath.bondKey(tr.r, tr.c, tr.t, nb.r, nb.c, nb.t);
+              if (!added.has(bk)) {
+                added.add(bk);
+                bonds.push({ a: i, b: j, damage: 0, maxStress: MATERIALS[d.mat].durability * d.hpMult * 0.9 });
+              }
+            }
+          }
+        }
+        const body = this.createBodyFromTris(tris, bonds, -d.driveSpd, 0, 0);
+        body.isEnemy = true;
+        body.enemyType = typeKey;
+        body.driveSpd = d.driveSpd;
+        body.baseDmg = d.baseDmg;
+        body.initialTris = tris.length;
+        this.bodies.push(body);
+        this.stats.totalMass += body.mass;
+        return body;
+      },
+
       initFromDesign(trisGrid, severedBonds, autoIgnite) {
         this.bodies = [];
         this.particles = [];
@@ -1522,6 +1588,73 @@
           b.sleeping = true;
           b.supported = true;
           b.sleepFrames = 10;
+        }
+
+        // 装填機（loader）・センサー（sensor）・角度調整（rotator）システムの初期化
+        this.reloadSystem = null;
+        let gunBodyRef = null;
+        let shellBodyRef = null;
+        let hasLoader = false, hasSensor = false, hasRotator = false;
+        for (const b of this.bodies) {
+          const mats = new Set(b.tris.map(t => t.matId));
+          if (mats.has('loader')) hasLoader = true;
+          if (mats.has('sensor')) hasSensor = true;
+          if (mats.has('rotator')) hasRotator = true;
+          if (b.x < 450 && b.tris.length >= 20 && (mats.has('energy_pulse') || mats.has('loader') || mats.has('dense') || mats.has('light'))) {
+            if (!gunBodyRef || b.tris.length > gunBodyRef.tris.length) gunBodyRef = b;
+          }
+          if (b.x < 450 && b.tris.length <= 16 && (mats.has('slick') || mats.has('elastic')) && !mats.has('loader')) {
+            shellBodyRef = b;
+          }
+        }
+        // 各剛体の熱容量・冷却率を質量と重質材比率から算出（高コスト重装甲＝高耐熱＆高冷却、低コスト軽質＝過熱・疲労しやすい）
+        for (const b of this.bodies) {
+          let denseCnt = 0, lightCnt = 0;
+          for (const tr of b.tris) {
+            if (tr.matId === 'dense' || tr.matId === 'rotator') denseCnt++;
+            else if (tr.matId === 'light') lightCnt++;
+          }
+          b.heat = 0;
+          b.heatCapacity = Math.max(26, 22 + denseCnt * 1.9 + lightCnt * 0.25);
+          b.coolingRate = 11 + denseCnt * 0.26 + lightCnt * 0.04;
+          b.isWeaponBody = (b === gunBodyRef);
+          b.pivotX = b.x;
+          b.pivotY = b.aabb.maxY;
+        }
+        if (gunBodyRef && (hasLoader || hasSensor || hasRotator)) {
+          const chargeTemplates = gunBodyRef.tris
+            .filter(tr => MATERIALS[tr.matId].kind === 'energy')
+            .map(tr => ({ r: tr.r, c: tr.c, t: tr.t, matId: tr.matId, lcx: tr.lcx, lcy: tr.lcy, lv: tr.lv.map(p => ({ ...p })) }));
+          const shellTemplate = shellBodyRef ? {
+            relX: shellBodyRef.x - gunBodyRef.x,
+            relY: shellBodyRef.y - gunBodyRef.y,
+            tris: shellBodyRef.tris.map(tr => ({
+              r: tr.r, c: tr.c, t: tr.t, matId: tr.matId,
+              lcx: tr.lcx, lcy: tr.lcy, lv: tr.lv.map(p => ({ ...p })),
+              exposed: [...tr.exposed]
+            })),
+            bonds: shellBodyRef.bonds.map(bd => ({ a: bd.a, b: bd.b, maxStress: bd.maxStress }))
+          } : null;
+          // センサーがある場合は、敵を検知するまで初回点火を待つ（防衛戦時）
+          if (hasSensor && state.tdMode) {
+            for (const tr of gunBodyRef.tris) {
+              if (MATERIALS[tr.matId].kind === 'energy') tr.ignited = false;
+            }
+          }
+          this.reloadSystem = {
+            gunBodyId: gunBodyRef.id,
+            hasLoader,
+            hasSensor,
+            hasRotator,
+            chargeTemplates,
+            shellTemplate,
+            reloadTimer: 0,
+            shotsFired: 0,
+            lastShellId: shellBodyRef ? shellBodyRef.id : null,
+            sensorLocked: false,
+            targetAngle: 0,
+            detectedTarget: null
+          };
         }
 
         if (autoIgnite && this.hasAnyEnergyTri()) {
@@ -1753,7 +1886,36 @@
             continue;
           }
 
-          const fx = pfx;
+          // 冷却＆熱疲労（過熱すると耐久と接続が急速に劣化して破壊される！）
+          if (body.heat > 0) {
+            body.heat = Math.max(0, body.heat - (body.coolingRate || 14) * dt);
+            if (body.heat > 78) {
+              const fatigue = (body.heat - 78) * dt * 1.35;
+              for (const tr of body.tris) {
+                if (tr.hp <= 0 || tr.consumed || MATERIALS[tr.matId].kind === 'energy') continue;
+                tr.hp -= fatigue;
+                if (tr.hp <= 0) {
+                  body.needsSplitCheck = true;
+                  this.emitEvent('🔥 熱疲労により砲身が過熱破損！', 'danger');
+                }
+              }
+              for (const bd of body.bonds) {
+                bd.damage += fatigue * 1.4;
+                if (bd.damage >= bd.maxStress) body.needsSplitCheck = true;
+              }
+            }
+          }
+
+          // 防衛戦の物理敵ユニットの自走駆動
+          let driveFx = 0;
+          if (body.isEnemy) {
+            const desiredVx = -(body.driveSpd || 50);
+            if (body.vx > desiredVx) {
+              driveFx = (desiredVx - body.vx) * body.mass * 3.2;
+            }
+          }
+
+          const fx = pfx + driveFx;
           const fy = GRAVITY * body.mass + pfy;
 
           // 速度・角速度更新（軽微な空気減衰）
@@ -1811,6 +1973,119 @@
         for (const body of snapshot) {
           if (body.needsSplitCheck) {
             this.processFractureAndSplit(body);
+          }
+        }
+
+        // 4.5 センサー認識 → 角度調整（rotator）→ 自動装填（loader）＆熱蓄積
+        if (this.reloadSystem) {
+          const rs = this.reloadSystem;
+          const gun = this.bodies.find(b => b.id === rs.gunBodyId) || this.bodies.find(b => b.isWeaponBody);
+          if (gun) {
+            rs.gunBodyId = gun.id;
+            // センサーによる標的認識（防衛戦中は敵、試射中は右側の標的剛体）
+            let target = null;
+            let bestDist = Infinity;
+            for (const b of this.bodies) {
+              if (b === gun || b.id === rs.lastShellId) continue;
+              const isTarget = state.tdMode ? b.isEnemy : (b.x > gun.x + 220);
+              if (!isTarget) continue;
+              const d = Math.hypot(b.x - gun.x, b.y - gun.y);
+              if (d < 860 && d < bestDist) {
+                bestDist = d;
+                target = b;
+              }
+            }
+            rs.detectedTarget = target ? { x: target.x, y: target.y } : null;
+            rs.sensorLocked = Boolean(target);
+
+            // 角度調整モーター（rotator）：センサー信号で砲身仰角を制御
+            if (rs.hasRotator && target) {
+              const dx = Math.max(80, target.x - gun.x);
+              const dy = target.y - gun.y;
+              const desiredAngle = Math.max(-0.28, Math.min(0.06, Math.atan2(dy - dx * 0.14, dx)));
+              rs.targetAngle = desiredAngle;
+              const diff = desiredAngle - gun.angle;
+              gun.sleeping = false;
+              gun.angle += Math.max(-0.55 * dt, Math.min(0.55 * dt, diff * 3.5 * dt));
+              gun.omega *= 0.5;
+              this.updateBodyWorldVerts(gun);
+            }
+
+            // 薬室に未消費の火薬が残っているか確認
+            const liveEnergy = gun.tris.filter(t => MATERIALS[t.matId].kind === 'energy' && !t.consumed && t.energyLeft > 0);
+            const hasUnignited = liveEnergy.some(t => !t.ignited);
+
+            // センサー → 火薬点火トリガー
+            if (hasUnignited && (!rs.hasSensor || rs.sensorLocked)) {
+              for (const t of liveEnergy) t.ignited = true;
+              rs.shotsFired++;
+              // 発射熱を蓄積（熱容量が小さい安価な軽質砲身ほど一気に過熱！）
+              const heatAdd = Math.min(62, 1650 / Math.max(24, gun.heatCapacity || 60));
+              gun.heat = Math.min(100, (gun.heat || 0) + heatAdd);
+              SoundFX.energyPulse(0.85);
+            }
+
+            // 自動装填機（loader）：発射後に指定連射間隔で火薬＆弾丸を再装填
+            if (rs.hasLoader && liveEnergy.length === 0 && rs.chargeTemplates.length > 0) {
+              rs.reloadTimer += dt;
+              const interval = Math.max(0.8, state.reloadInterval || 1.8);
+              if (rs.reloadTimer >= interval && (!rs.hasSensor || rs.sensorLocked)) {
+                rs.reloadTimer = 0;
+                const cos = Math.cos(gun.angle), sin = Math.sin(gun.angle);
+                // 薬室火薬を再装填
+                for (const ct of rs.chargeTemplates) {
+                  const mat = MATERIALS[ct.matId];
+                  const wx = gun.x + ct.lcx * cos - ct.lcy * sin;
+                  const wy = gun.y + ct.lcx * sin + ct.lcy * cos;
+                  gun.tris.push({
+                    r: ct.r, c: ct.c, t: ct.t,
+                    matId: ct.matId,
+                    wx, wy,
+                    wv: ct.lv.map(p => ({ x: gun.x + p.x * cos - p.y * sin, y: gun.y + p.x * sin + p.y * cos })),
+                    lv: ct.lv.map(p => ({ ...p })),
+                    lcx: ct.lcx, lcy: ct.lcy,
+                    exposed: [false, false, false],
+                    hp: mat.durability, maxHp: mat.durability,
+                    energyLeft: mat.energyPool,
+                    ignited: true,
+                    consumed: false,
+                    hitFlash: 0
+                  });
+                }
+                // 弾丸を再装填
+                if (rs.shellTemplate) {
+                  const st = rs.shellTemplate;
+                  const sx = gun.x + st.relX * cos - st.relY * sin;
+                  const sy = gun.y + st.relX * sin + st.relY * cos;
+                  const newTris = st.tris.map(t => {
+                    const mat = MATERIALS[t.matId];
+                    return {
+                      r: t.r, c: t.c, t: t.t, matId: t.matId,
+                      wx: sx + t.lcx * cos - t.lcy * sin,
+                      wy: sy + t.lcx * sin + t.lcy * cos,
+                      wv: t.lv.map(p => ({ x: sx + p.x * cos - p.y * sin, y: sy + p.x * sin + p.y * cos })),
+                      lv: t.lv.map(p => ({ ...p })),
+                      lcx: t.lcx, lcy: t.lcy,
+                      exposed: [...t.exposed],
+                      hp: mat.durability, maxHp: mat.durability,
+                      energyLeft: mat.kind === 'energy' ? mat.energyPool : 0,
+                      ignited: false, consumed: false, hitFlash: 0
+                    };
+                  });
+                  const newBonds = st.bonds.map(bd => ({ a: bd.a, b: bd.b, damage: 0, maxStress: bd.maxStress }));
+                  const newShell = this.createBodyFromTris(newTris, newBonds, 0, 0, 0);
+                  newShell.angle = gun.angle;
+                  this.updateBodyWorldVerts(newShell);
+                  this.bodies.push(newShell);
+                  rs.lastShellId = newShell.id;
+                }
+                rs.shotsFired++;
+                const heatAdd = Math.min(62, 1650 / Math.max(24, gun.heatCapacity || 60));
+                gun.heat = Math.min(100, (gun.heat || 0) + heatAdd);
+                SoundFX.energyPulse(0.85);
+                this.emitEvent(`🔄 自動装填→発射 (#${rs.shotsFired} / 熱 ${Math.round(gun.heat)}%)`, gun.heat > 75 ? 'danger' : 'info');
+              }
+            }
           }
         }
 
@@ -2218,6 +2493,23 @@
           const childVx = body.vx - body.omega * ry;
           const childVy = body.vy + body.omega * rx;
           const newBody = this.createBodyFromTris(newTris, newBonds, childVx, childVy, body.omega);
+          // 親が砲台ボディだった場合、最大の生存連結成分へ熱・熱容量・自動装填IDを引き継ぐ
+          if (body.isWeaponBody && newTris.length >= 16) {
+            newBody.isWeaponBody = true;
+            newBody.heat = body.heat || 0;
+            newBody.heatCapacity = body.heatCapacity || 60;
+            newBody.coolingRate = body.coolingRate || 14;
+            if (this.reloadSystem && this.reloadSystem.gunBodyId === body.id) {
+              this.reloadSystem.gunBodyId = newBody.id;
+            }
+          }
+          if (body.isEnemy) {
+            newBody.isEnemy = true;
+            newBody.enemyType = body.enemyType;
+            newBody.driveSpd = body.driveSpd;
+            newBody.baseDmg = body.baseDmg;
+            newBody.initialTris = body.initialTris;
+          }
           this.bodies.push(newBody);
         }
       }
@@ -2383,8 +2675,13 @@
       history: [],
       redoStack: [],
       selectedMat: 'dense',
-      recentMats: ['dense', 'light', 'energy_pulse', 'slick', 'elastic', 'energy_sustained'],
-      tool: 'hex', // 'hex' | 'tri' | 'line' | 'carve' | 'bond'
+      recentMats: ['dense', 'light', 'energy_pulse', 'slick', 'elastic', 'energy_sustained', 'sensor', 'rotator', 'loader'],
+      tool: 'hex', // 'hex' | 'tri' | 'line' | 'carve' | 'bond' | 'wire'
+      signalWires: [], // [{ from:{r,c}, to:{r,c}, kind:'aim'|'fire' }]
+      wireDragFrom: null,
+      wireDragPos: null,
+      reloadInterval: 1.8, // 秒（低速2.8 / 標準1.8 / 高速1.0）
+      tdMode: false,
       bondSubMode: 'cut', // 'cut' | 'join'
       autoBond: true,
       autoIgnite: true,
@@ -2933,6 +3230,15 @@
       btnToolLine: document.getElementById('btnToolLine'),
       btnToolCarve: document.getElementById('btnToolCarve'),
       btnToolBond: document.getElementById('btnToolBond'),
+      btnToolWire: document.getElementById('btnToolWire'),
+      heatPillWrap: document.getElementById('heatPillWrap'),
+      simHeatVal: document.getElementById('simHeatVal'),
+      simReloadVal: document.getElementById('simReloadVal'),
+      tdHudBar: document.getElementById('tdHudBar'),
+      tdWaveBadge: document.getElementById('tdWaveBadge'),
+      tdBaseHpBadge: document.getElementById('tdBaseHpBadge'),
+      tdKillBadge: document.getElementById('tdKillBadge'),
+      tdPresetPicker: document.getElementById('tdPresetPicker'),
       btnAutoBond: document.getElementById('btnAutoBond'),
       btnUndo: document.getElementById('btnUndo'),
       btnRedo: document.getElementById('btnRedo'),
@@ -3901,8 +4207,67 @@
         }
       }
 
-      // 5. チュートリアルガイドオーバーレイ
+      // 5. チュートリアルガイド＆信号配線＆防衛戦拠点オーバーレイ
+      drawSignalWiresAndSensors(timeSec);
+      if (state.tdMode) TowerDefenseMgr.drawOverlay(timeSec);
       TutorialMgr.drawOverlay(timeSec);
+    }
+
+    function drawSignalWiresAndSensors(timeSec) {
+      // 設計モードの信号配線描画
+      if (state.mode === 'design') {
+        for (const w of state.signalWires) {
+          const p1 = TriHexMath.hexCenter(w.from.r, w.from.c);
+          const p2 = TriHexMath.hexCenter(w.to.r, w.to.c);
+          ctx.save();
+          ctx.strokeStyle = w.kind === 'aim' ? '#22d3ee' : '#fbbf24';
+          ctx.lineWidth = 2.2;
+          ctx.setLineDash([6, 4]);
+          ctx.lineDashOffset = -timeSec * 24;
+          ctx.beginPath();
+          ctx.moveTo(p1.x, p1.y);
+          ctx.lineTo(p2.x, p2.y);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.fillStyle = w.kind === 'aim' ? '#22d3ee' : '#fbbf24';
+          ctx.beginPath(); ctx.arc(p1.x, p1.y, 4, 0, Math.PI * 2); ctx.fill();
+          ctx.beginPath(); ctx.arc(p2.x, p2.y, 4, 0, Math.PI * 2); ctx.fill();
+          ctx.restore();
+        }
+        if (state.wireDragFrom && state.wireDragPos) {
+          const p1 = TriHexMath.hexCenter(state.wireDragFrom.r, state.wireDragFrom.c);
+          ctx.save();
+          ctx.strokeStyle = '#c4b5fd';
+          ctx.lineWidth = 2;
+          ctx.setLineDash([4, 4]);
+          ctx.beginPath();
+          ctx.moveTo(p1.x, p1.y);
+          ctx.lineTo(state.wireDragPos.x, state.wireDragPos.y);
+          ctx.stroke();
+          ctx.restore();
+        }
+      } else if (PhysicsEngine.reloadSystem && PhysicsEngine.reloadSystem.hasSensor) {
+        const rs = PhysicsEngine.reloadSystem;
+        const gun = PhysicsEngine.bodies.find(b => b.id === rs.gunBodyId);
+        if (gun) {
+          const sensorTri = gun.tris.find(t => t.matId === 'sensor' && t.hp > 0);
+          if (sensorTri) {
+            ctx.save();
+            // センサー走査ビーム＆ロックオン線
+            if (rs.detectedTarget) {
+              ctx.strokeStyle = 'rgba(196, 181, 253, 0.55)';
+              ctx.lineWidth = 1.6;
+              ctx.setLineDash([5, 4]);
+              ctx.beginPath();
+              ctx.moveTo(sensorTri.wx, sensorTri.wy);
+              ctx.lineTo(rs.detectedTarget.x, rs.detectedTarget.y);
+              ctx.stroke();
+              ctx.setLineDash([]);
+            }
+            ctx.restore();
+          }
+        }
+      }
     }
 
     function drawDesignLayer(timeSec) {
@@ -4242,6 +4607,13 @@
             ctx.fill();
           }
 
+          // 熱・金属疲労の赤熱オーバーレイ（連射しすぎると赤熱→破損！）
+          if (body.heat > 35 && mat.kind !== 'energy') {
+            const hNorm = Math.min(1, (body.heat - 35) / 65);
+            ctx.fillStyle = `rgba(239, 68, 68, ${hNorm * 0.58})`;
+            ctx.fill();
+          }
+
           // 損傷オーバーレイ
           if (state.vis.damage && tr.hp < tr.maxHp * 0.92) {
             const dmgRatio = 1 - Math.max(0, tr.hp / tr.maxHp);
@@ -4362,6 +4734,12 @@
         hint: '接続・分離: 境界線をなぞって切り離し／再結合',
         sub: '独立剛体を区別表示',
         icon: '<svg class="w-4 h-4 text-cyan-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>'
+      },
+      wire: {
+        short: '配線',
+        hint: '信号配線: センサーから角度調整や火薬へドラッグ接続',
+        sub: '青:角度 / 黄:点火',
+        icon: '<svg class="w-4 h-4 text-violet-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="19" r="2"/><circle cx="19" cy="5" r="2"/><path d="M6.5 17.5C10 14 14 10 17.5 6.5"/></svg>'
       }
     };
 
@@ -4467,7 +4845,8 @@
         tri: el.btnToolTri,
         line: el.btnToolLine,
         carve: el.btnToolCarve,
-        bond: el.btnToolBond
+        bond: el.btnToolBond,
+        wire: el.btnToolWire
       };
       Object.entries(map).forEach(([k, btn]) => {
         btn.classList.remove('active', 'active-rose');
@@ -4552,6 +4931,20 @@
 
         if (el.simSummarySpeed) el.simSummarySpeed.textContent = String(maxSpd);
         if (el.simSummaryDmg) el.simSummaryDmg.textContent = String(dmgTotal);
+        if (el.heatPillWrap) {
+          const rs = PhysicsEngine.reloadSystem;
+          const gun = rs ? PhysicsEngine.bodies.find(b => b.id === rs.gunBodyId) : null;
+          if (gun) {
+            el.heatPillWrap.classList.remove('hidden');
+            el.heatPillWrap.classList.add('inline-flex');
+            const h = Math.round(gun.heat || 0);
+            el.simHeatVal.textContent = `${h}%`;
+            el.simHeatVal.className = `font-mono-tech ${h >= 78 ? 'text-rose-400' : h >= 45 ? 'text-amber-300' : 'text-cyan-300'}`;
+            el.simReloadVal.textContent = rs.hasLoader ? `#${rs.shotsFired}` : '';
+          } else {
+            el.heatPillWrap.classList.add('hidden');
+          }
+        }
         if (state.prevSimResult) {
           const ds = maxSpd - state.prevSimResult.maxSpeed;
           const dd = dmgTotal - state.prevSimResult.dmgTotal;
@@ -4894,6 +5287,15 @@
         const w = screenToWorld(clientX, clientY);
         state.rightButton = (button === 2);
 
+        if (state.tool === 'wire' && !state.rightButton) {
+          const hex = TriHexMath.worldToHex(w.x, w.y);
+          if (hex) {
+            state.wireDragFrom = hex;
+            state.wireDragPos = { x: w.x, y: w.y };
+          }
+          return;
+        }
+
         if (state.tool === 'bond') {
           pushUndo();
           state.bondDragActive = true;
@@ -4930,6 +5332,11 @@
         state.hoverTri = TriHexMath.worldToTri(w.x, w.y);
         state.hoverEdge = state.tool === 'bond' ? findNearestSharedEdge(w.x, w.y, 15) : null;
 
+        if (state.wireDragFrom) {
+          state.wireDragPos = { x: w.x, y: w.y };
+          return;
+        }
+
         if (state.bondDragActive) {
           const prev = state.bondStroke[state.bondStroke.length - 1];
           if (Math.hypot(w.x - prev.x, w.y - prev.y) >= 4) {
@@ -4957,6 +5364,32 @@
           el.canvas.style.cursor = 'crosshair';
           return;
         }
+        if (state.wireDragFrom) {
+          const from = state.wireDragFrom;
+          state.wireDragFrom = null;
+          state.wireDragPos = null;
+          if (clientX !== undefined) {
+            const w = screenToWorld(clientX, clientY);
+            const to = TriHexMath.worldToHex(w.x, w.y);
+            if (to && (to.r !== from.r || to.c !== from.c)) {
+              const toMats = state.tris[to.r][to.c].filter(Boolean);
+              const kind = toMats.includes('rotator') ? 'aim' : 'fire';
+              const idx = state.signalWires.findIndex(x =>
+                x.from.r === from.r && x.from.c === from.c && x.to.r === to.r && x.to.c === to.c
+              );
+              if (idx >= 0) {
+                state.signalWires.splice(idx, 1);
+                showToast('信号配線を解除しました', 'info');
+              } else {
+                state.signalWires.push({ from, to, kind });
+                showToast(kind === 'aim' ? '配線: センサー → 角度調整' : '配線: センサー → 火薬/装填機', 'success');
+              }
+              SoundFX.click(720);
+            }
+          }
+          return;
+        }
+
         if (state.bondDragActive) {
           if (!state.bondDragMoved && clientX !== undefined) {
             const w = screenToWorld(clientX, clientY);
@@ -5290,6 +5723,7 @@
       el.btnToolLine.addEventListener('click', () => pickTool('line', 600));
       el.btnToolCarve.addEventListener('click', () => pickTool('carve', 340));
       el.btnToolBond.addEventListener('click', () => pickTool('bond', 640));
+      el.btnToolWire.addEventListener('click', () => pickTool('wire', 680));
 
       el.btnBondCut.addEventListener('click', () => { state.bondSubMode = 'cut'; SoundFX.click(380); syncToolUI(false); });
       el.btnBondJoin.addEventListener('click', () => { state.bondSubMode = 'join'; SoundFX.click(640); syncToolUI(false); });
@@ -5558,848 +5992,331 @@
         updateTelemetryHUD();
       }
 
-      if (TowerDefenseMgr.active) {
-        TowerDefenseMgr.update(rawDt);
-        TowerDefenseMgr.draw(ts / 1000);
-      } else {
-        drawWorld(ts / 1000);
+      if (state.tdMode && state.mode === 'sim' && !state.paused) {
+        TowerDefenseMgr.stepBattle(rawDt * state.simSpeed);
       }
+      drawWorld(ts / 1000);
       requestAnimationFrame(mainLoop);
     }
 
     // =========================================================================
-    // MODULE 16: TowerDefenseMgr — 防衛戦ステージ1（自作兵器＆デフォルト兵器配置TD）
+    // MODULE 16: TowerDefenseMgr — 実物理エンジン連動の防衛戦ステージ1
+    //   試射と100%同一の PhysicsEngine / FieldEngine / 装填 / 熱疲労 / センサー / 角度調整で戦う！
     // =========================================================================
-    const TD_W = 1000;
-    const TD_H = 480;
-    const TD_GROUND = 420;
-
     const TowerDefenseMgr = {
       active: false,
-      canvas: null,
-      tctx: null,
-      vt: { scale: 1, ox: 0, oy: 0 },
-      selectedWeaponId: 'cannon',
-      selectedPadIdx: -1,
-      gold: 120,
+      presetKey: 'td_heavy',
       baseHp: 100,
-      maxBaseHp: 100,
-      wave: 0,
+      wave: 1,
       totalWaves: 3,
-      waveActive: false,
-      speedMult: 1,
+      kills: 0,
+      totalEnemies: 8,
       status: 'playing', // 'playing' | 'victory' | 'defeat'
       spawnQueue: [],
       spawnTimer: 0,
-      kills: 0,
-      pads: [],
-      enemies: [],
-      projectiles: [],
-      shockwaves: [],
-      particles: [],
-      floatTexts: [],
-      customSpec: null,
-
-      BASE_WEAPONS: [
-        { id: 'custom', name: '自作兵器', short: '自作', cost: 35, color: '#22d3ee', accent: '#67e8f9', range: 540, cd: 1.15, dmg: 42, projSpeed: 540, gravity: 180, splash: 35, pellets: 1, kb: 16, arc: false, desc: '設計工房の兵器を自動変換' },
-        { id: 'cannon', name: '火薬砲', short: '火薬砲', cost: 30, color: '#334155', accent: '#94a3b8', range: 560, cd: 1.0, dmg: 38, projSpeed: 620, gravity: 120, splash: 0, pellets: 1, kb: 14, arc: false, desc: '高速直射・高DPS' },
-        { id: 'scatter', name: '3連散弾砲', short: '散弾砲', cost: 40, color: '#1d4ed8', accent: '#93c5fd', range: 370, cd: 1.3, dmg: 20, projSpeed: 560, gravity: 150, splash: 0, pellets: 3, kb: 18, arc: false, desc: '近中距離3連掃射' },
-        { id: 'mortar', name: '60°迫撃砲', short: '迫撃砲', cost: 45, color: '#0f766e', accent: '#2dd4bf', range: 740, cd: 1.85, dmg: 54, projSpeed: 460, gravity: 440, splash: 78, pellets: 1, kb: 22, arc: true, desc: '長射程・曲射範囲攻撃' },
-        { id: 'he', name: '衝撃榴弾砲', short: '榴弾砲', cost: 55, color: '#9f1239', accent: '#fb7185', range: 620, cd: 2.0, dmg: 70, projSpeed: 560, gravity: 160, splash: 96, pellets: 1, kb: 42, arc: false, desc: '着弾衝撃起爆・大爆風' }
-      ],
+      savedCustom: null,
 
       WAVES: [
-        [
-          { type: 'scout', count: 6, interval: 1.05 }
-        ],
-        [
-          { type: 'heavy', count: 2, interval: 1.6 },
-          { type: 'fast',  count: 5, interval: 0.65 },
-          { type: 'heavy', count: 2, interval: 1.4 }
-        ],
-        [
-          { type: 'heavy', count: 2, interval: 1.2 },
-          { type: 'boss',  count: 1, interval: 1.8 },
-          { type: 'fast',  count: 5, interval: 0.55 },
-          { type: 'scout', count: 4, interval: 0.7 }
-        ]
+        [{ type: 'scout', count: 2, delay: 2.2 }],
+        [{ type: 'fast', count: 2, delay: 1.8 }, { type: 'heavy', count: 1, delay: 2.4 }],
+        [{ type: 'scout', count: 2, delay: 1.6 }, { type: 'boss', count: 1, delay: 2.2 }]
       ],
 
-      ENEMY_TYPES: {
-        scout: { name: '偵察ヘキサ', hp: 62, speed: 58, radius: 18, bounty: 14, baseDmg: 12, color: '#854d0e', accent: '#facc15' },
-        fast:  { name: '滑性スカウト', hp: 48, speed: 92, radius: 15, bounty: 15, baseDmg: 10, color: '#1d4ed8', accent: '#93c5fd' },
-        heavy: { name: '重装甲キャリア', hp: 175, speed: 36, radius: 24, bounty: 26, baseDmg: 22, color: '#334155', accent: '#94a3b8' },
-        boss:  { name: '移動要塞ボス', hp: 620, speed: 23, radius: 36, bounty: 80, baseDmg: 45, color: '#7f1d1d', accent: '#fb7185' }
+      buildWeaponPreset(key) {
+        if (key === 'td_cheap') {
+          // ① 低コスト軽質緩射砲：薬室だけ重質＋薄肉軽質バレル（安価だが熱容量が低く、高速連射すると過熱・疲労で壊れる！）
+          const gunBody = [
+            ...bandLine(15, 75, 295, 'light'),
+            ...bandLine(14, 75, 295, 'light'),
+            ...bandLine(13, 75, 165, 'dense'),
+            ...bandLine(13, 170, 355, 'light'),
+            ...bandLine(12, 75, 130, 'dense'),
+            ...bandLine(11, 75, 130, 'dense'),
+            ...bandLine(10, 75, 165, 'dense'),
+            ...bandLine(10, 170, 355, 'light'),
+            ...hexGroup(6, 2, 'energy_pulse'),
+            [7, 2, 0, 'loader'], [7, 2, 1, 'loader'],
+            [4, 4, 1, 'sensor'], [4, 4, 2, 'sensor']
+          ];
+          const shell = [...bandLine(12, 200, 260, 'slick'), ...bandLine(11, 200, 260, 'slick')];
+          return {
+            name: '安価・軽質緩射砲',
+            wires: [{ from: { r: 4, c: 4 }, to: { r: 6, c: 2 }, kind: 'fire' }],
+            ...buildGroupedPreset([gunBody, shell])
+          };
+        }
+        if (key === 'td_smart') {
+          // ③ センサー追尾・角度調整砲：センサー → 角度調整モーター ＆ センサー → 火薬＋自動装填機
+          const gunBody = [
+            ...bandLine(15, 75, 295, 'dense'),
+            ...bandLine(14, 75, 295, 'dense'),
+            ...bandLine(13, 75, 365, 'dense'),
+            ...bandLine(12, 75, 130, 'dense'),
+            ...bandLine(11, 75, 130, 'dense'),
+            ...bandLine(10, 75, 365, 'dense'),
+            ...hexGroup(6, 2, 'energy_pulse'),
+            [7, 3, 4, 'rotator'], [7, 3, 5, 'rotator'],
+            [7, 2, 0, 'loader'], [7, 2, 1, 'loader'],
+            [4, 4, 1, 'sensor'], [4, 4, 2, 'sensor']
+          ];
+          const shell = [
+            ...bandLine(12, 200, 260, 'slick'),
+            ...bandLine(11, 200, 260, 'slick'),
+            [5, 5, 1, 'slick'], [6, 5, 4, 'slick']
+          ];
+          return {
+            name: 'センサー追尾・角度調整砲',
+            wires: [
+              { from: { r: 4, c: 4 }, to: { r: 7, c: 3 }, kind: 'aim' },
+              { from: { r: 4, c: 4 }, to: { r: 6, c: 2 }, kind: 'fire' }
+            ],
+            ...buildGroupedPreset([gunBody, shell])
+          };
+        }
+        // ② 重装甲・高速連射砲（デフォルト）：厚い重質材バレルで熱容量・耐久が高く高速連射に耐える
+        const gunBody = [
+          ...bandLine(15, 65, 310, 'dense'),
+          ...bandLine(14, 65, 310, 'dense'),
+          ...bandLine(13, 65, 375, 'dense'),
+          ...bandLine(12, 65, 130, 'dense'),
+          ...bandLine(11, 65, 130, 'dense'),
+          ...bandLine(10, 65, 375, 'dense'),
+          ...bandLine(9,  65, 310, 'dense'),
+          ...hexGroup(6, 2, 'energy_pulse'),
+          [7, 2, 0, 'loader'], [7, 2, 1, 'loader'],
+          [4, 4, 1, 'sensor'], [4, 4, 2, 'sensor']
+        ];
+        const shell = [
+          ...bandLine(12, 200, 260, 'slick'),
+          ...bandLine(11, 200, 260, 'slick'),
+          [5, 5, 1, 'slick'], [6, 5, 4, 'slick']
+        ];
+        return {
+          name: '重装甲・高速連射砲',
+          wires: [{ from: { r: 4, c: 4 }, to: { r: 6, c: 2 }, kind: 'fire' }],
+          ...buildGroupedPreset([gunBody, shell])
+        };
       },
 
       init() {
-        this.canvas = document.getElementById('tdCanvas');
-        this.tctx = this.canvas.getContext('2d');
-        this.reset();
-        this.bindEvents();
-      },
-
-      compileCustomBlueprint() {
-        const info = computeDesignComponents();
-        let energyPulse = 0, energySust = 0, slick = 0, elastic = 0, dense = 0, total = 0;
-        for (let r = 0; r < GRID_ROWS; r++) {
-          for (let c = 0; c < GRID_COLS; c++) {
-            for (let t = 0; t < 6; t++) {
-              const m = state.tris[r][c][t];
-              if (!m) continue;
-              total++;
-              if (m === 'energy_pulse') energyPulse++;
-              else if (m === 'energy_sustained') energySust++;
-              else if (m === 'slick') slick++;
-              else if (m === 'elastic') elastic++;
-              else if (m === 'dense') dense++;
-            }
-          }
-        }
-        if (total < 6) {
-          this.customSpec = { ...this.BASE_WEAPONS[0] };
-          return;
-        }
-        const cost = Math.max(25, Math.min(65, Math.round(24 + info.totalCost * 0.8)));
-        const hasSplash = energyPulse >= 6 || energySust >= 6;
-        const pellets = slick >= 14 ? 2 : 1;
-        const dmg = Math.round((34 + energyPulse * 2.2 + energySust * 1.8 + dense * 0.25) / pellets);
-        const cd = Math.max(0.75, Math.min(2.1, 0.95 + (total / 95) * 0.85));
-        const range = Math.min(720, Math.round(480 + dense * 2.2 + slick * 4));
-        const splash = hasSplash ? Math.min(90, 38 + (energyPulse + energySust) * 3.5) : 0;
-        const arc = elastic >= 6 && energyPulse >= 4;
-        this.customSpec = {
-          ...this.BASE_WEAPONS[0],
-          name: state.currentName ? state.currentName.slice(0, 8) : '自作兵器',
-          short: '自作',
-          cost,
-          dmg,
-          cd,
-          range,
-          splash,
-          pellets,
-          arc,
-          gravity: arc ? 380 : 140,
-          projSpeed: arc ? 480 : 600,
-          kb: hasSplash ? 28 : 16
-        };
-      },
-
-      getWeaponSpec(id) {
-        if (id === 'custom') return this.customSpec || this.BASE_WEAPONS[0];
-        return this.BASE_WEAPONS.find(w => w.id === id) || this.BASE_WEAPONS[1];
-      },
-
-      reset() {
-        this.compileCustomBlueprint();
-        this.gold = 120;
-        this.baseHp = 100;
-        this.wave = 0;
-        this.waveActive = false;
-        this.status = 'playing';
-        this.spawnQueue = [];
-        this.spawnTimer = 0;
-        this.kills = 0;
-        this.selectedPadIdx = -1;
-        this.enemies = [];
-        this.projectiles = [];
-        this.shockwaves = [];
-        this.particles = [];
-        this.floatTexts = [];
-        this.pads = [
-          { x: 185, y: 245, label: '高台A', weapon: null, cooldown: 0, aimAngle: 0, recoil: 0 },
-          { x: 325, y: 315, label: '要塞B', weapon: null, cooldown: 0, aimAngle: 0, recoil: 0 },
-          { x: 475, y: 385, label: '前線C', weapon: null, cooldown: 0, aimAngle: 0, recoil: 0 },
-          { x: 615, y: 325, label: '前哨D', weapon: null, cooldown: 0, aimAngle: 0, recoil: 0 }
-        ];
-        this.buildPaletteUI();
-        this.syncHUD();
-      },
-
-      open() {
-        closeAllPopups();
-        if (state.mode === 'sim') switchMode('design');
-        this.active = true;
-        this.compileCustomBlueprint();
-        this.buildPaletteUI();
-        document.getElementById('tdOverlay').classList.remove('hidden');
-        document.getElementById('appFooter').classList.add('hidden');
-        el.topHudBar.classList.add('hidden');
-        el.tutorialCard.classList.add('hidden');
-        el.costPill.parentElement.classList.add('hidden');
-        document.getElementById('btnToggleTDLabel').textContent = '設計へ';
-        this.syncHUD();
-      },
-
-      close() {
-        this.active = false;
-        document.getElementById('tdOverlay').classList.add('hidden');
-        if (!state.dockCollapsed) document.getElementById('appFooter').classList.remove('hidden');
-        el.topHudBar.classList.remove('hidden');
-        if (TutorialMgr.active) el.tutorialCard.classList.remove('hidden');
-        el.costPill.parentElement.classList.remove('hidden');
-        document.getElementById('btnToggleTDLabel').textContent = '防衛戦';
-      },
-
-      buildPaletteUI() {
-        const box = document.getElementById('tdWeaponPalette');
-        if (!box) return;
-        box.innerHTML = '';
-        this.BASE_WEAPONS.forEach(baseW => {
-          const w = this.getWeaponSpec(baseW.id);
-          const btn = document.createElement('button');
-          btn.type = 'button';
-          btn.dataset.tdWeapon = w.id;
-          const isSel = this.selectedWeaponId === w.id;
-          const canAfford = this.gold >= w.cost;
-          btn.className = `ui-btn h-11 px-1.5 rounded-xl border flex flex-col items-center justify-center leading-tight transition-all ${
-            isSel
-              ? 'border-white bg-slate-800 ring-2 ring-cyan-400/70'
-              : 'border-slate-800 bg-slate-900/90 hover:border-slate-600'
-          } ${!canAfford ? 'opacity-50' : ''}`;
-          btn.title = `${w.name}: ${w.desc} (コスト ${w.cost})`;
-          btn.innerHTML = `
-            <span class="flex items-center gap-1 text-[11px] font-bold text-slate-100 truncate max-w-full">
-              <span class="w-2 h-2 rounded-sm shrink-0" style="background:${w.color}; border:1px solid ${w.accent}"></span>
-              <span>${w.short}</span>
-            </span>
-            <span class="font-mono-tech text-[10px] font-bold ${canAfford ? 'text-amber-300' : 'text-rose-400'}">${w.cost}G</span>
-          `;
-          btn.addEventListener('click', () => {
-            this.selectedWeaponId = w.id;
-            this.selectedPadIdx = -1;
-            SoundFX.click(560);
-            this.buildPaletteUI();
-            this.syncHUD();
-          });
-          box.appendChild(btn);
-        });
-      },
-
-      syncHUD() {
-        document.getElementById('tdWavePill').textContent = `WAVE ${this.wave}/${this.totalWaves}`;
-        const hpEl = document.getElementById('tdHpPill');
-        hpEl.textContent = `拠点 ${Math.max(0, Math.round(this.baseHp))}`;
-        hpEl.className = this.baseHp <= 35
-          ? 'font-mono-tech text-[11px] font-bold px-2 py-0.5 rounded-md bg-rose-500/20 border border-rose-500/50 text-rose-300 whitespace-nowrap'
-          : 'font-mono-tech text-[11px] font-bold px-2 py-0.5 rounded-md bg-emerald-500/15 border border-emerald-500/35 text-emerald-300 whitespace-nowrap';
-        document.getElementById('tdGoldPill').textContent = `資金 ${this.gold}`;
-        document.getElementById('btnTdSpeed').textContent = `${this.speedMult}x`;
-
-        const startBtn = document.getElementById('btnTdStartWave');
-        const startLbl = document.getElementById('btnTdStartWaveLabel');
-        if (this.status !== 'playing') {
-          startBtn.disabled = true;
-          startLbl.textContent = this.status === 'victory' ? 'クリア済' : '敗北';
-        } else if (this.waveActive) {
-          startBtn.disabled = true;
-          startLbl.textContent = `WAVE ${this.wave} 進行中`;
-        } else {
-          startBtn.disabled = false;
-          startLbl.textContent = `WAVE ${this.wave + 1} 開始`;
-        }
-
-        const sellBtn = document.getElementById('btnTdSell');
-        const selPad = this.selectedPadIdx >= 0 ? this.pads[this.selectedPadIdx] : null;
-        if (selPad && selPad.weapon) {
-          const refund = Math.round(selPad.weapon.cost * 0.7);
-          sellBtn.classList.remove('hidden');
-          sellBtn.textContent = `撤去 (+${refund}G)`;
-        } else {
-          sellBtn.classList.add('hidden');
-        }
-
-        const hint = document.getElementById('tdHintBanner');
-        const hasAnyWeapon = this.pads.some(p => p.weapon);
-        hint.classList.toggle('hidden', this.waveActive || this.status !== 'playing' || hasAnyWeapon);
-
-        const modal = document.getElementById('tdResultModal');
-        if (this.status === 'victory' || this.status === 'defeat') {
-          modal.classList.remove('hidden');
-          const badge = document.getElementById('tdResultBadge');
-          const title = document.getElementById('tdResultTitle');
-          const desc = document.getElementById('tdResultDesc');
-          if (this.status === 'victory') {
-            badge.className = 'inline-block font-mono-tech text-xs font-extrabold px-3 py-1 rounded-full bg-emerald-400 text-slate-950';
-            badge.textContent = 'STAGE 1 CLEAR!';
-            title.textContent = '渓谷の要塞を防衛しました！';
-            desc.textContent = `全3WAVEを撃退！（撃破数 ${this.kills}体 ・ 拠点残HP ${Math.round(this.baseHp)} ・ 残資金 ${this.gold}G）`;
-          } else {
-            badge.className = 'inline-block font-mono-tech text-xs font-extrabold px-3 py-1 rounded-full bg-rose-500 text-white';
-            badge.textContent = 'DEFEAT';
-            title.textContent = '拠点コアが突破されました';
-            desc.textContent = `WAVE ${this.wave} で陥落。前線に散弾砲、高台に迫撃砲や榴弾砲を配置して再挑戦しよう！`;
-          }
-        } else {
-          modal.classList.add('hidden');
-        }
-      },
-
-      placeWeaponOnPad(padIdx, weaponId = this.selectedWeaponId) {
-        const pad = this.pads[padIdx];
-        if (!pad || this.status !== 'playing') return false;
-        const spec = this.getWeaponSpec(weaponId);
-        if (pad.weapon) {
-          this.selectedPadIdx = this.selectedPadIdx === padIdx ? -1 : padIdx;
-          this.syncHUD();
-          return false;
-        }
-        if (this.gold < spec.cost) {
-          showToast(`資金が足りません（必要 ${spec.cost}G）`, 'warn');
-          return false;
-        }
-        this.gold -= spec.cost;
-        pad.weapon = { ...spec };
-        pad.cooldown = 0.15;
-        pad.aimAngle = 0;
-        pad.recoil = 0;
-        this.selectedPadIdx = padIdx;
-        SoundFX.click(640);
-        haptic(10);
-        this.floatTexts.push({ x: pad.x, y: pad.y - 26, text: `-${spec.cost}G`, color: '#fbbf24', age: 0, life: 0.9 });
-        this.buildPaletteUI();
-        this.syncHUD();
-        return true;
-      },
-
-      sellSelectedPad() {
-        const pad = this.pads[this.selectedPadIdx];
-        if (!pad || !pad.weapon) return;
-        const refund = Math.round(pad.weapon.cost * 0.7);
-        this.gold += refund;
-        pad.weapon = null;
-        this.selectedPadIdx = -1;
-        SoundFX.click(360);
-        this.floatTexts.push({ x: pad.x, y: pad.y - 26, text: `+${refund}G`, color: '#34d399', age: 0, life: 0.9 });
-        this.buildPaletteUI();
-        this.syncHUD();
-      },
-
-      startNextWave() {
-        if (this.waveActive || this.status !== 'playing' || this.wave >= this.totalWaves) return;
-        const waveDef = this.WAVES[this.wave];
-        this.wave++;
-        this.waveActive = true;
-        this.spawnQueue = [];
-        for (const group of waveDef) {
-          for (let i = 0; i < group.count; i++) {
-            this.spawnQueue.push({ type: group.type, delay: group.interval });
-          }
-        }
-        this.spawnTimer = 0.25;
-        SoundFX.energyPulse(0.75);
-        this.syncHUD();
-      },
-
-      spawnEnemy(typeKey) {
-        const def = this.ENEMY_TYPES[typeKey] || this.ENEMY_TYPES.scout;
-        this.enemies.push({
-          type: typeKey,
-          x: TD_W - 25,
-          y: TD_GROUND - def.radius,
-          vx: -def.speed,
-          hp: def.hp,
-          maxHp: def.hp,
-          speed: def.speed,
-          radius: def.radius,
-          bounty: def.bounty,
-          baseDmg: def.baseDmg,
-          color: def.color,
-          accent: def.accent,
-          hitFlash: 0,
-          rot: 0
-        });
-      },
-
-      stepFixed(dt) {
-        if (this.status !== 'playing') return;
-
-        // 敵スポーン
-        if (this.waveActive && this.spawnQueue.length > 0) {
-          this.spawnTimer -= dt;
-          if (this.spawnTimer <= 0) {
-            const next = this.spawnQueue.shift();
-            this.spawnEnemy(next.type);
-            this.spawnTimer = next.delay;
-          }
-        }
-
-        // 砲台AI：射程内で最も拠点に近い（xが最小の）敵を狙って発射
-        for (const pad of this.pads) {
-          if (pad.recoil > 0) pad.recoil = Math.max(0, pad.recoil - dt * 28);
-          const w = pad.weapon;
-          if (!w) continue;
-          if (pad.cooldown > 0) pad.cooldown -= dt;
-
-          let target = null;
-          let bestX = Infinity;
-          for (const en of this.enemies) {
-            if (en.hp <= 0) continue;
-            const dist = Math.hypot(en.x - pad.x, en.y - pad.y);
-            if (dist <= w.range && en.x < bestX) {
-              bestX = en.x;
-              target = en;
-            }
-          }
-          if (!target) continue;
-
-          // 簡易リード予測
-          const dist = Math.hypot(target.x - pad.x, target.y - pad.y);
-          const flightT = dist / Math.max(180, w.projSpeed);
-          const leadX = Math.max(100, target.x - target.speed * flightT * 0.55);
-          const leadY = target.y;
-          const dx = leadX - pad.x;
-          const dy = leadY - pad.y;
-          let aimAngle = Math.atan2(dy, dx);
-          if (w.arc) {
-            aimAngle = Math.max(-1.22, Math.min(-0.45, Math.atan2(dy - 0.5 * w.gravity * flightT * flightT, dx)));
-          }
-          pad.aimAngle = aimAngle;
-
-          if (pad.cooldown <= 0) {
-            pad.cooldown = w.cd;
-            pad.recoil = 8;
-            const count = w.pellets || 1;
-            for (let k = 0; k < count; k++) {
-              const spread = count > 1 ? (k - (count - 1) / 2) * 0.13 : 0;
-              let vx, vy;
-              if (w.arc) {
-                const tFlight = Math.max(0.55, Math.min(1.55, Math.abs(dx) / 340));
-                vx = dx / tFlight;
-                vy = (dy - 0.5 * w.gravity * tFlight * tFlight) / tFlight;
-              } else {
-                const ang = aimAngle + spread;
-                vx = Math.cos(ang) * w.projSpeed;
-                vy = Math.sin(ang) * w.projSpeed - (w.gravity * flightT * 0.45);
-              }
-              this.projectiles.push({
-                x: pad.x + Math.cos(aimAngle) * 18,
-                y: pad.y + Math.sin(aimAngle) * 18,
-                vx, vy,
-                gravity: w.gravity,
-                dmg: w.dmg,
-                splash: w.splash,
-                kb: w.kb,
-                color: w.accent,
-                radius: w.splash > 50 ? 6 : 4.5,
-                alive: true
-              });
-            }
-            // 発砲マズルフラッシュ
-            for (let p = 0; p < 4; p++) {
-              this.particles.push({
-                x: pad.x + Math.cos(aimAngle) * 20,
-                y: pad.y + Math.sin(aimAngle) * 20,
-                vx: Math.cos(aimAngle + (Math.random() - 0.5) * 0.6) * (90 + Math.random() * 80),
-                vy: Math.sin(aimAngle + (Math.random() - 0.5) * 0.6) * (90 + Math.random() * 80),
-                color: '#fde047', size: 3, age: 0, life: 0.22
-              });
-            }
-            SoundFX.click(w.splash > 50 ? 260 : 480, 0.04);
-          }
-        }
-
-        // 弾丸移動＆着弾判定
-        for (const pr of this.projectiles) {
-          if (!pr.alive) continue;
-          pr.vy += pr.gravity * dt;
-          pr.x += pr.vx * dt;
-          pr.y += pr.vy * dt;
-
-          let hitEnemy = null;
-          for (const en of this.enemies) {
-            if (en.hp <= 0) continue;
-            if (Math.hypot(en.x - pr.x, en.y - pr.y) <= en.radius + pr.radius + 3) {
-              hitEnemy = en;
-              break;
-            }
-          }
-          const hitGround = pr.y >= TD_GROUND;
-          if (hitEnemy || hitGround || pr.x > TD_W + 40 || pr.x < -40) {
-            pr.alive = false;
-            if (pr.splash > 0 && (hitEnemy || hitGround)) {
-              this.shockwaves.push({ x: pr.x, y: Math.min(TD_GROUND, pr.y), maxR: pr.splash, age: 0, life: 0.34, color: pr.color });
-              SoundFX.energyPulse(0.55);
-              for (const en of this.enemies) {
-                if (en.hp <= 0) continue;
-                const d = Math.hypot(en.x - pr.x, en.y - pr.y);
-                if (d <= pr.splash + en.radius) {
-                  const falloff = Math.max(0.45, 1 - d / (pr.splash + en.radius + 10));
-                  this.damageEnemy(en, pr.dmg * falloff, pr.kb * falloff);
-                }
-              }
-            } else if (hitEnemy) {
-              this.damageEnemy(hitEnemy, pr.dmg, pr.kb);
-              SoundFX.impact(0.4);
-            }
-            if (hitEnemy || hitGround) {
-              for (let k = 0; k < (pr.splash > 0 ? 10 : 4); k++) {
-                const a = Math.random() * Math.PI * 2;
-                const s = 40 + Math.random() * (pr.splash > 0 ? 160 : 85);
-                this.particles.push({ x: pr.x, y: Math.min(TD_GROUND, pr.y), vx: Math.cos(a) * s, vy: Math.sin(a) * s - 40, color: pr.color, size: 3.2, age: 0, life: 0.36 });
-              }
-            }
-          }
-        }
-        this.projectiles = this.projectiles.filter(p => p.alive);
-
-        // 敵移動＆拠点到達判定
-        for (const en of this.enemies) {
-          if (en.hp <= 0) continue;
-          en.hitFlash = Math.max(0, en.hitFlash - dt * 6);
-          en.vx += (-en.speed - en.vx) * Math.min(1, dt * 6);
-          en.x += en.vx * dt;
-          en.rot -= (en.vx * dt) / Math.max(12, en.radius);
-          if (en.x <= 102 + en.radius) {
-            this.baseHp = Math.max(0, this.baseHp - en.baseDmg);
-            en.hp = 0;
-            this.shockwaves.push({ x: 96, y: TD_GROUND - 30, maxR: 58, age: 0, life: 0.35, color: '#fb7185' });
-            this.floatTexts.push({ x: 96, y: TD_GROUND - 65, text: `-${en.baseDmg} HP`, color: '#fb7185', age: 0, life: 1.0 });
-            SoundFX.fracture();
-            haptic(20);
-            if (this.baseHp <= 0) {
-              this.status = 'defeat';
-              this.waveActive = false;
-            }
-            this.syncHUD();
-          }
-        }
-        this.enemies = this.enemies.filter(e => e.hp > 0);
-
-        // エフェクト更新
-        for (const sw of this.shockwaves) sw.age += dt;
-        this.shockwaves = this.shockwaves.filter(s => s.age < s.life);
-        for (const pt of this.particles) { pt.age += dt; pt.vy += 320 * dt; pt.x += pt.vx * dt; pt.y += pt.vy * dt; }
-        this.particles = this.particles.filter(p => p.age < p.life);
-        for (const ft of this.floatTexts) { ft.age += dt; ft.y -= 28 * dt; }
-        this.floatTexts = this.floatTexts.filter(f => f.age < f.life);
-
-        // WAVE完了＆ステージクリア判定
-        if (this.waveActive && this.spawnQueue.length === 0 && this.enemies.length === 0 && this.status === 'playing') {
-          this.waveActive = false;
-          if (this.wave >= this.totalWaves) {
-            this.status = 'victory';
-            SoundFX.chime();
-          } else {
-            this.gold += 35;
-            this.floatTexts.push({ x: 500, y: 180, text: `WAVE ${this.wave} クリア！ +35G`, color: '#34d399', age: 0, life: 1.4 });
-            SoundFX.chime();
-            this.buildPaletteUI();
-          }
-          this.syncHUD();
-        }
-      },
-
-      damageEnemy(en, dmg, kb) {
-        en.hp -= dmg;
-        en.hitFlash = 1;
-        en.vx = Math.min(120, en.vx + kb * (en.type === 'boss' ? 0.25 : 1.0));
-        if (en.hp <= 0) {
-          this.kills++;
-          this.gold += en.bounty;
-          this.floatTexts.push({ x: en.x, y: en.y - en.radius - 8, text: `+${en.bounty}G`, color: '#fde047', age: 0, life: 0.9 });
-          for (let k = 0; k < (en.type === 'boss' ? 22 : 8); k++) {
-            const a = Math.random() * Math.PI * 2;
-            const s = 50 + Math.random() * 170;
-            this.particles.push({ x: en.x, y: en.y, vx: Math.cos(a) * s, vy: Math.sin(a) * s - 50, color: en.accent, size: 3.8, age: 0, life: 0.55 });
-          }
-          this.buildPaletteUI();
-          this.syncHUD();
-        }
-      },
-
-      update(rawDt) {
-        const dt = Math.min(0.05, rawDt) * this.speedMult;
-        const fixed = 1 / 60;
-        let rem = dt;
-        while (rem > 0.0001) {
-          const step = Math.min(fixed, rem);
-          this.stepFixed(step);
-          rem -= step;
-        }
-      },
-
-      screenToTD(clientX, clientY) {
-        const rect = this.canvas.getBoundingClientRect();
-        return {
-          x: (clientX - rect.left - this.vt.ox) / this.vt.scale,
-          y: (clientY - rect.top - this.vt.oy) / this.vt.scale
-        };
-      },
-
-      draw(timeSec) {
-        const rect = this.canvas.getBoundingClientRect();
-        if (!rect.width || !rect.height) return;
-        const dpr = Math.min(window.devicePixelRatio || 1, 2);
-        const tw = Math.floor(rect.width * dpr);
-        const th = Math.floor(rect.height * dpr);
-        if (this.canvas.width !== tw || this.canvas.height !== th) {
-          this.canvas.width = tw;
-          this.canvas.height = th;
-        }
-        const scale = Math.min(rect.width / TD_W, rect.height / TD_H);
-        const ox = (rect.width - TD_W * scale) * 0.5;
-        const oy = (rect.height - TD_H * scale) * 0.5;
-        this.vt = { scale, ox, oy };
-
-        const g = this.tctx;
-        g.setTransform(1, 0, 0, 1, 0, 0);
-        const bg = g.createLinearGradient(0, 0, 0, th);
-        bg.addColorStop(0, '#050a14');
-        bg.addColorStop(1, '#0d1628');
-        g.fillStyle = bg;
-        g.fillRect(0, 0, tw, th);
-
-        g.setTransform(scale * dpr, 0, 0, scale * dpr, ox * dpr, oy * dpr);
-
-        // 渓谷の背景シルエット＆高台地形
-        g.fillStyle = '#0f1a2e';
-        g.beginPath();
-        g.moveTo(0, TD_GROUND);
-        g.lineTo(130, 260); g.lineTo(245, 260); g.lineTo(275, 330);
-        g.lineTo(385, 330); g.lineTo(420, 400); g.lineTo(540, 400);
-        g.lineTo(570, 340); g.lineTo(665, 340); g.lineTo(705, TD_GROUND);
-        g.closePath();
-        g.fill();
-        g.strokeStyle = 'rgba(148, 163, 184, 0.28)';
-        g.lineWidth = 2;
-        g.stroke();
-
-        // 地面＆敵進軍ルート
-        g.fillStyle = '#162033';
-        g.fillRect(-500, TD_GROUND, TD_W + 1000, 400);
-        g.strokeStyle = '#475569';
-        g.lineWidth = 2.5;
-        g.beginPath(); g.moveTo(-500, TD_GROUND); g.lineTo(TD_W + 500, TD_GROUND); g.stroke();
-
-        // 敵スポーンポータル（右端）
-        const pulse = 0.5 + 0.5 * Math.sin(timeSec * 4.5);
-        g.save();
-        g.strokeStyle = `rgba(251, 113, 133, ${0.45 + pulse * 0.4})`;
-        g.lineWidth = 3;
-        g.beginPath();
-        g.arc(TD_W - 22, TD_GROUND - 34, 24 + pulse * 4, 0, Math.PI * 2);
-        g.stroke();
-        g.fillStyle = 'rgba(244, 63, 94, 0.16)';
-        g.fill();
-        g.fillStyle = '#fda4af';
-        g.font = 'bold 10px "Noto Sans JP", sans-serif';
-        g.textAlign = 'center';
-        g.fillText('敵出現', TD_W - 22, TD_GROUND - 66);
-        g.restore();
-
-        // 左端：拠点コア
-        g.save();
-        const hpRatio = Math.max(0, this.baseHp / this.maxBaseHp);
-        const coreColor = hpRatio > 0.4 ? '#22d3ee' : '#fb7185';
-        g.fillStyle = '#0f172a';
-        g.strokeStyle = coreColor;
-        g.lineWidth = 3;
-        g.beginPath();
-        for (let k = 0; k < 6; k++) {
-          const a = (Math.PI / 3) * k;
-          const px = 72 + Math.cos(a) * 32;
-          const py = TD_GROUND - 36 + Math.sin(a) * 32;
-          if (k === 0) g.moveTo(px, py); else g.lineTo(px, py);
-        }
-        g.closePath();
-        g.fill();
-        g.stroke();
-        g.fillStyle = coreColor;
-        g.font = 'bold 11px "Noto Sans JP", sans-serif';
-        g.textAlign = 'center';
-        g.fillText('拠点', 72, TD_GROUND - 32);
-        // 拠点HPバー
-        g.fillStyle = '#1e293b';
-        g.fillRect(36, TD_GROUND - 82, 72, 7);
-        g.fillStyle = coreColor;
-        g.fillRect(36, TD_GROUND - 82, 72 * hpRatio, 7);
-        g.restore();
-
-        // 兵器配置パッド＆設置済み兵器
-        this.pads.forEach((pad, idx) => {
-          const isSel = idx === this.selectedPadIdx;
-          if (isSel && pad.weapon) {
-            g.save();
-            g.strokeStyle = 'rgba(34, 211, 238, 0.35)';
-            g.fillStyle = 'rgba(34, 211, 238, 0.06)';
-            g.lineWidth = 1.5;
-            g.setLineDash([6, 4]);
-            g.beginPath();
-            g.arc(pad.x, pad.y, pad.weapon.range, 0, Math.PI * 2);
-            g.fill();
-            g.stroke();
-            g.restore();
-          }
-
-          // パッド台座
-          g.save();
-          g.fillStyle = pad.weapon ? '#1e293b' : `rgba(34, 211, 238, ${0.12 + pulse * 0.12})`;
-          g.strokeStyle = isSel ? '#ffffff' : (pad.weapon ? pad.weapon.accent : `rgba(34, 211, 238, ${0.55 + pulse * 0.35})`);
-          g.lineWidth = isSel ? 2.5 : 2;
-          g.beginPath();
-          g.roundRect(pad.x - 28, pad.y + 8, 56, 12, 4);
-          g.fill();
-          g.stroke();
-
-          if (!pad.weapon) {
-            g.fillStyle = '#67e8f9';
-            g.font = 'bold 11px "Noto Sans JP", sans-serif';
-            g.textAlign = 'center';
-            g.fillText('+ 配置', pad.x, pad.y - 2);
-            g.fillStyle = 'rgba(148,163,184,0.75)';
-            g.font = '9px "Noto Sans JP", sans-serif';
-            g.fillText(pad.label, pad.x, pad.y + 32);
-          } else {
-            const w = pad.weapon;
-            // 砲身シルエット（照準回転＋反動キック）
-            g.translate(pad.x, pad.y - 4);
-            g.rotate(pad.aimAngle);
-            g.fillStyle = w.color;
-            g.strokeStyle = w.accent;
-            g.lineWidth = 2;
-            g.beginPath();
-            g.roundRect(-12 - pad.recoil, -7, 32, 14, 3);
-            g.fill();
-            g.stroke();
-            g.restore();
-
-            // 砲座ボディ＆リロードゲージ
-            g.save();
-            g.fillStyle = w.color;
-            g.strokeStyle = w.accent;
-            g.lineWidth = 2;
-            g.beginPath();
-            g.arc(pad.x, pad.y - 4, 12, 0, Math.PI * 2);
-            g.fill();
-            g.stroke();
-            g.fillStyle = '#e2e8f0';
-            g.font = 'bold 9px "Noto Sans JP", sans-serif';
-            g.textAlign = 'center';
-            g.fillText(w.short, pad.x, pad.y + 32);
-          }
-          g.restore();
-        });
-
-        // 敵ユニット描画（回転する六角兵器＋HPバー）
-        for (const en of this.enemies) {
-          g.save();
-          g.translate(en.x, en.y);
-          g.rotate(en.rot);
-          g.fillStyle = en.hitFlash > 0.2 ? '#ffffff' : en.color;
-          g.strokeStyle = en.accent;
-          g.lineWidth = en.type === 'boss' ? 3 : 2;
-          g.beginPath();
-          for (let k = 0; k < 6; k++) {
-            const a = (Math.PI / 3) * k;
-            const px = Math.cos(a) * en.radius;
-            const py = Math.sin(a) * en.radius;
-            if (k === 0) g.moveTo(px, py); else g.lineTo(px, py);
-          }
-          g.closePath();
-          g.fill();
-          g.stroke();
-          // 内部ライン
-          g.strokeStyle = 'rgba(255,255,255,0.22)';
-          g.lineWidth = 1;
-          g.beginPath();
-          g.moveTo(-en.radius, 0); g.lineTo(en.radius, 0);
-          g.stroke();
-          g.restore();
-
-          // HPバー
-          const bw = Math.max(28, en.radius * 1.9);
-          const ratio = Math.max(0, en.hp / en.maxHp);
-          g.fillStyle = 'rgba(15,23,42,0.85)';
-          g.fillRect(en.x - bw / 2, en.y - en.radius - 11, bw, 5);
-          g.fillStyle = en.type === 'boss' ? '#fb7185' : '#34d399';
-          g.fillRect(en.x - bw / 2, en.y - en.radius - 11, bw * ratio, 5);
-        }
-
-        // 弾丸
-        for (const pr of this.projectiles) {
-          g.fillStyle = pr.color;
-          g.beginPath();
-          g.arc(pr.x, pr.y, pr.radius, 0, Math.PI * 2);
-          g.fill();
-        }
-
-        // 圧力衝撃波リング
-        for (const sw of this.shockwaves) {
-          const p = sw.age / sw.life;
-          g.save();
-          g.globalAlpha = Math.max(0, 1 - p);
-          g.strokeStyle = sw.color;
-          g.fillStyle = sw.color;
-          g.lineWidth = 3;
-          g.beginPath();
-          g.arc(sw.x, sw.y, sw.maxR * p, 0, Math.PI * 2);
-          g.stroke();
-          g.globalAlpha = Math.max(0, (1 - p) * 0.18);
-          g.fill();
-          g.restore();
-        }
-
-        // パーティクル
-        for (const pt of this.particles) {
-          g.globalAlpha = Math.max(0, 1 - pt.age / pt.life);
-          g.fillStyle = pt.color;
-          g.beginPath();
-          g.arc(pt.x, pt.y, pt.size, 0, Math.PI * 2);
-          g.fill();
-        }
-        g.globalAlpha = 1;
-
-        // フローティングテキスト
-        for (const ft of this.floatTexts) {
-          g.save();
-          g.globalAlpha = Math.max(0, 1 - ft.age / ft.life);
-          g.fillStyle = ft.color;
-          g.font = 'bold 12px "Noto Sans JP", sans-serif';
-          g.textAlign = 'center';
-          g.fillText(ft.text, ft.x, ft.y);
-          g.restore();
-        }
-      },
-
-      bindEvents() {
-        const handleTap = (clientX, clientY) => {
-          const pt = this.screenToTD(clientX, clientY);
-          let hitPad = -1;
-          for (let i = 0; i < this.pads.length; i++) {
-            if (Math.hypot(pt.x - this.pads[i].x, pt.y - this.pads[i].y) <= 44) {
-              hitPad = i;
-              break;
-            }
-          }
-          if (hitPad >= 0) {
-            this.placeWeaponOnPad(hitPad);
-          } else {
-            this.selectedPadIdx = -1;
-            this.syncHUD();
-          }
-        };
-
-        this.canvas.addEventListener('pointerdown', e => {
-          e.preventDefault();
-          handleTap(e.clientX, e.clientY);
-        });
-
         document.getElementById('btnToggleTD').addEventListener('click', () => {
           if (this.active) this.close();
           else this.open();
           SoundFX.click(560);
         });
-        document.getElementById('btnTdStartWave').addEventListener('click', () => this.startNextWave());
-        document.getElementById('btnTdSell').addEventListener('click', () => this.sellSelectedPad());
-        document.getElementById('btnTdReset').addEventListener('click', () => { this.reset(); SoundFX.click(420); });
-        document.getElementById('btnTdRetry').addEventListener('click', () => { this.reset(); SoundFX.click(420); });
-        document.getElementById('btnTdBackToDesign').addEventListener('click', () => this.close());
-        document.getElementById('btnTdSpeed').addEventListener('click', () => {
-          this.speedMult = this.speedMult === 1 ? 2 : 1;
-          this.syncHUD();
-          SoundFX.click(580);
+        el.tdPresetPicker.addEventListener('change', e => {
+          this.loadWeapon(e.target.value);
         });
+        document.querySelectorAll('.rate-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            state.reloadInterval = parseFloat(btn.dataset.rate);
+            this.syncRateButtons();
+            SoundFX.click(580);
+          });
+        });
+        document.getElementById('btnTdRetry').addEventListener('click', () => {
+          document.getElementById('tdResultModal').classList.add('hidden');
+          this.startBattle();
+        });
+        document.getElementById('btnTdBackToDesign').addEventListener('click', () => {
+          document.getElementById('tdResultModal').classList.add('hidden');
+          this.close();
+        });
+      },
+
+      syncRateButtons() {
+        document.querySelectorAll('.rate-btn').forEach(b => {
+          const act = Math.abs(parseFloat(b.dataset.rate) - state.reloadInterval) < 0.05;
+          b.className = act
+            ? 'rate-btn ui-btn px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-400 text-slate-950'
+            : 'rate-btn ui-btn px-1.5 py-0.5 rounded text-[10px] font-bold text-slate-400 hover:text-white';
+        });
+      },
+
+      open() {
+        closeAllPopups();
+        if (TutorialMgr.active) TutorialMgr.stop();
+        this.savedCustom = { tris: cloneTriGrid(state.tris), severed: new Set(state.severedBonds), wires: [...state.signalWires] };
+        this.active = true;
+        state.tdMode = true;
+        el.tdHudBar.classList.remove('hidden');
+        el.tdHudBar.classList.add('inline-flex');
+        document.getElementById('btnToggleTDLabel').textContent = '設計へ';
+        this.loadWeapon(this.presetKey);
+      },
+
+      close() {
+        this.active = false;
+        state.tdMode = false;
+        el.tdHudBar.classList.add('hidden');
+        el.tdHudBar.classList.remove('inline-flex');
+        document.getElementById('tdResultModal').classList.add('hidden');
+        document.getElementById('btnToggleTDLabel').textContent = '防衛戦';
+        if (state.mode === 'sim') switchMode('design');
+        if (this.savedCustom) {
+          state.tris = this.savedCustom.tris;
+          state.severedBonds = this.savedCustom.severed;
+          state.signalWires = this.savedCustom.wires;
+          updateTelemetryHUD();
+        }
+      },
+
+      loadWeapon(key) {
+        this.presetKey = key;
+        if (el.tdPresetPicker) el.tdPresetPicker.value = key;
+        if (key === 'td_custom' && this.savedCustom) {
+          state.tris = cloneTriGrid(this.savedCustom.tris);
+          state.severedBonds = new Set(this.savedCustom.severed);
+          state.signalWires = [...this.savedCustom.wires];
+        } else {
+          const wp = this.buildWeaponPreset(key);
+          state.tris = wp.tris;
+          state.severedBonds = wp.severed;
+          state.signalWires = wp.wires || [];
+          state.currentName = wp.name;
+        }
+        state.autoIgnite = true;
+        state.currentGoal = null;
+        syncStageGoalUI();
+        this.syncRateButtons();
+        this.startBattle();
+      },
+
+      startBattle() {
+        this.baseHp = 100;
+        this.wave = 1;
+        this.kills = 0;
+        this.status = 'playing';
+        this.spawnQueue = [];
+        this.enqueueWave(0);
+        this.spawnTimer = 0.25;
+        document.getElementById('tdResultModal').classList.add('hidden');
+        switchMode('sim');
+        requestAnimationFrame(() => resetCamera());
+        this.syncHUD();
+      },
+
+      enqueueWave(waveIdx) {
+        const w = this.WAVES[waveIdx];
+        if (!w) return;
+        for (const g of w) {
+          for (let i = 0; i < g.count; i++) this.spawnQueue.push({ type: g.type, delay: g.delay });
+        }
+      },
+
+      stepBattle(dt) {
+        if (this.status !== 'playing') return;
+
+        // 敵スポーン
+        if (this.spawnQueue.length > 0) {
+          this.spawnTimer -= dt;
+          if (this.spawnTimer <= 0) {
+            const nxt = this.spawnQueue.shift();
+            PhysicsEngine.spawnEnemyBody(nxt.type);
+            this.spawnTimer = nxt.delay;
+          }
+        }
+
+        // 敵の撃破（大きく弾き飛ばされた／破砕された／画面外）＆拠点到達チェック
+        for (let i = PhysicsEngine.bodies.length - 1; i >= 0; i--) {
+          const b = PhysicsEngine.bodies[i];
+          if (!b.isEnemy) continue;
+          const alive = b.tris.filter(t => t.hp > 0 && !t.consumed).length;
+          const hpSum = b.tris.reduce((a, t) => a + Math.max(0, t.hp), 0);
+          const maxSum = b.tris.reduce((a, t) => a + t.maxHp, 0);
+          const knockedOut = alive < Math.ceil((b.initialTris || 6) * 0.65) || hpSum < maxSum * 0.45 || b.x > WORLD_W - 20 || Math.abs(b.angle) > 1.3;
+          if (knockedOut) {
+            PhysicsEngine.bodies.splice(i, 1);
+            this.kills++;
+            SoundFX.fracture();
+            this.syncHUD();
+            continue;
+          }
+          if (b.x <= 125) {
+            this.baseHp = Math.max(0, this.baseHp - (b.baseDmg || 20));
+            PhysicsEngine.bodies.splice(i, 1);
+            SoundFX.fracture();
+            if (this.baseHp <= 0) {
+              this.status = 'defeat';
+              state.paused = true;
+              this.showResult();
+            }
+            this.syncHUD();
+          }
+        }
+
+        // 次のWAVEまたは勝利
+        const liveEnemies = PhysicsEngine.bodies.some(b => b.isEnemy);
+        if (this.spawnQueue.length === 0 && !liveEnemies && this.status === 'playing') {
+          if (this.wave < this.totalWaves) {
+            this.wave++;
+            this.enqueueWave(this.wave - 1);
+            this.spawnTimer = 1.0;
+            SoundFX.chime();
+            showToast('WAVE ' + this.wave + ' 開始！', 'warn');
+            this.syncHUD();
+          } else {
+            this.status = 'victory';
+            state.paused = true;
+            SoundFX.chime();
+            this.showResult();
+            this.syncHUD();
+          }
+        }
+      },
+
+      syncHUD() {
+        el.tdWaveBadge.textContent = 'W ' + this.wave + '/' + this.totalWaves;
+        el.tdBaseHpBadge.textContent = '拠点 ' + Math.round(this.baseHp);
+        el.tdKillBadge.textContent = '撃破 ' + this.kills + '/' + this.totalEnemies;
+      },
+
+      showResult() {
+        const modal = document.getElementById('tdResultModal');
+        modal.classList.remove('hidden');
+        const badge = document.getElementById('tdResultBadge');
+        const title = document.getElementById('tdResultTitle');
+        const desc = document.getElementById('tdResultDesc');
+        const gun = PhysicsEngine.reloadSystem ? PhysicsEngine.bodies.find(b => b.id === PhysicsEngine.reloadSystem.gunBodyId) : null;
+        const shots = PhysicsEngine.reloadSystem ? PhysicsEngine.reloadSystem.shotsFired : 0;
+        const heat = gun ? Math.round(gun.heat || 0) : 100;
+        if (this.status === 'victory') {
+          badge.className = 'inline-block font-mono-tech text-xs font-extrabold px-3 py-1 rounded-full bg-emerald-400 text-slate-950';
+          badge.textContent = 'STAGE 1 CLEAR!';
+          title.textContent = '防衛戦 1 をクリアしました！';
+          desc.textContent = '発射数 ' + shots + '発 ・ 残拠点HP ' + Math.round(this.baseHp) + ' ・ 砲身温度 ' + heat + '%';
+        } else {
+          badge.className = 'inline-block font-mono-tech text-xs font-extrabold px-3 py-1 rounded-full bg-rose-500 text-white';
+          badge.textContent = 'DEFEAT';
+          title.textContent = '防衛ラインが突破されました';
+          desc.textContent = '砲身の過熱・疲労や連射速度・装甲バランスを見直して再挑戦しよう！（発射数 ' + shots + '発）';
+        }
+      },
+
+      drawOverlay(timeSec) {
+        ctx.save();
+        ctx.strokeStyle = 'rgba(34, 211, 238, 0.35)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([6, 6]);
+        ctx.beginPath();
+        ctx.moveTo(115, 60); ctx.lineTo(115, GROUND_Y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = '#22d3ee';
+        ctx.font = 'bold 10px "Noto Sans JP", sans-serif';
+        ctx.fillText('防衛ライン', 52, 78);
+
+        const pulse = 0.5 + 0.5 * Math.sin(timeSec * 5);
+        ctx.strokeStyle = 'rgba(251, 113, 133, ' + (0.4 + pulse * 0.45) + ')';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(WORLD_W - 22, GROUND_Y - 38, 22 + pulse * 4, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.fillStyle = '#fda4af';
+        ctx.font = 'bold 10px "Noto Sans JP", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('敵出現', WORLD_W - 22, GROUND_Y - 70);
+        ctx.restore();
       }
     };
 
@@ -6544,27 +6461,41 @@
           };
         },
         td: {
-          open: () => { TowerDefenseMgr.open(); TowerDefenseMgr.draw(0); },
+          open: (preset = 'td_heavy', rate = 1.8) => {
+            state.reloadInterval = rate;
+            TowerDefenseMgr.presetKey = preset;
+            TowerDefenseMgr.open();
+            state.paused = true;
+            drawWorld(0);
+          },
           close: () => TowerDefenseMgr.close(),
-          reset: () => { TowerDefenseMgr.reset(); TowerDefenseMgr.draw(0); },
-          place: (padIdx, weaponId) => { const ok = TowerDefenseMgr.placeWeaponOnPad(padIdx, weaponId); TowerDefenseMgr.draw(0); return ok; },
-          startWave: () => { TowerDefenseMgr.startNextWave(); TowerDefenseMgr.draw(0); },
           stepFrames: (n = 60) => {
-            for (let i = 0; i < n; i++) TowerDefenseMgr.stepFixed(1 / 60);
-            TowerDefenseMgr.draw(n / 60);
+            for (let i = 0; i < n; i++) {
+              PhysicsEngine.step(1 / 60);
+              TowerDefenseMgr.stepBattle(1 / 60);
+            }
+            updateTelemetryHUD();
+            drawWorld(PhysicsEngine.simTime);
             return window.__HB_DEBUG__.td.getState();
           },
-          getState: () => ({
-            active: TowerDefenseMgr.active,
-            status: TowerDefenseMgr.status,
-            wave: TowerDefenseMgr.wave,
-            waveActive: TowerDefenseMgr.waveActive,
-            gold: TowerDefenseMgr.gold,
-            baseHp: Math.round(TowerDefenseMgr.baseHp),
-            kills: TowerDefenseMgr.kills,
-            enemies: TowerDefenseMgr.enemies.length,
-            pads: TowerDefenseMgr.pads.map(p => p.weapon ? p.weapon.id : null)
-          })
+          getState: () => {
+            const rs = PhysicsEngine.reloadSystem;
+            const gun = rs ? PhysicsEngine.bodies.find(b => b.id === rs.gunBodyId) : null;
+            return {
+              active: TowerDefenseMgr.active,
+              status: TowerDefenseMgr.status,
+              wave: TowerDefenseMgr.wave,
+              baseHp: Math.round(TowerDefenseMgr.baseHp),
+              kills: TowerDefenseMgr.kills,
+              shotsFired: rs ? rs.shotsFired : 0,
+              gunHeat: gun ? Math.round(gun.heat || 0) : null,
+              gunAlive: Boolean(gun),
+              gunAngleDeg: gun ? Math.round((gun.angle * 180 / Math.PI) * 10) / 10 : null,
+              brokenBonds: PhysicsEngine.stats.brokenBonds,
+              destroyedTris: PhysicsEngine.stats.destroyedTris,
+              enemies: PhysicsEngine.bodies.filter(b => b.isEnemy).length
+            };
+          }
         }
       };
     }

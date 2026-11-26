@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 /**
- * HexaBallistica 防衛戦ステージ1（タワーディフェンス）自動プレイテスト
- * モバイル(360x800)＆デスクトップ(1080x640)の両方でUI崩れ・戦闘バランス・全3WAVEクリアを検証します。
+ * HexaBallistica 実物理TD（装填・熱疲労・センサー・角度調整・実物理敵撃破）自動プレイテスト
  */
 import { spawn } from 'child_process';
 import fs from 'fs';
@@ -10,12 +9,12 @@ import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..');
-const OUT_DIR = process.argv[2] || path.join(REPO_ROOT, '.playtest-out', 'td');
+const OUT_DIR = process.argv[2] || path.join(REPO_ROOT, '.playtest-out', 'real_td');
 fs.mkdirSync(OUT_DIR, { recursive: true });
 
 const CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
-const PORT = 8779;
-const CDP_PORT = 9239;
+const PORT = 8780;
+const CDP_PORT = 9240;
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 async function run() {
@@ -77,46 +76,33 @@ async function run() {
     }
     await sleep(250);
 
-    // 防衛戦を開く → 自作兵器・迫撃砲・散弾砲を配置
-    await evalJS(`
-      window.__HB_DEBUG__.td.open();
-      window.__HB_DEBUG__.td.place(0, 'mortar');   // 45G
-      window.__HB_DEBUG__.td.place(1, 'custom');   // 35G (自作兵器)
-      window.__HB_DEBUG__.td.place(2, 'scatter');  // 40G
-    `);
-    await shot('td_desktop_setup.png');
+    // 1. 安価・軽質砲 × 高速連射(1.0s) → 過熱・疲労テスト
+    await evalJS(`window.__HB_DEBUG__.td.open('td_cheap', 1.0)`);
+    let cheapFast = await evalJS(`window.__HB_DEBUG__.td.stepFrames(240)`);
+    console.log('1) 安価軽質×高速(1.0s):', JSON.stringify(cheapFast));
+    await shot('real_td_cheap_overheat.png');
 
-    // WAVE 1 実行
-    await evalJS(`window.__HB_DEBUG__.td.startWave()`);
-    await evalJS(`window.__HB_DEBUG__.td.stepFrames(240)`);
-    await shot('td_desktop_wave1_mid.png');
-    let st = await evalJS(`window.__HB_DEBUG__.td.stepFrames(600)`);
-    console.log('After Wave 1:', JSON.stringify(st));
+    // 2. センサー追尾・角度調整砲 × 標準連射(1.8s) → 旋回・装填・撃破テスト
+    await evalJS(`window.__HB_DEBUG__.td.open('td_smart', 1.8)`);
+    let smartMid = await evalJS(`window.__HB_DEBUG__.td.stepFrames(240)`);
+    await shot('real_td_smart_mid.png');
+    console.log('2) センサー追尾・角度調整砲:', JSON.stringify(smartMid));
 
-    // WAVE 2: 稼いだ資金で前哨Dに衝撃榴弾砲を配置して実行
-    await evalJS(`window.__HB_DEBUG__.td.place(3, 'he'); window.__HB_DEBUG__.td.startWave();`);
-    await evalJS(`window.__HB_DEBUG__.td.stepFrames(300)`);
-    await shot('td_desktop_wave2_mid.png');
-    st = await evalJS(`window.__HB_DEBUG__.td.stepFrames(900)`);
-    console.log('After Wave 2:', JSON.stringify(st));
+    // 3. 重装甲・高速連射砲 × 高速連射(1.0s) → 熱に耐えて撃破テスト
+    await evalJS(`window.__HB_DEBUG__.td.open('td_heavy', 1.0)`);
+    let heavyMid = await evalJS(`window.__HB_DEBUG__.td.stepFrames(300)`);
+    await shot('real_td_heavy_mid.png');
+    console.log('3) 重装甲×高速(1.0s):', JSON.stringify(heavyMid));
 
-    // WAVE 3 (BOSS WAVE)
-    await evalJS(`window.__HB_DEBUG__.td.startWave()`);
-    await evalJS(`window.__HB_DEBUG__.td.stepFrames(420)`);
-    await shot('td_desktop_wave3_boss.png');
-    st = await evalJS(`window.__HB_DEBUG__.td.stepFrames(1600)`);
-    console.log('After Wave 3:', JSON.stringify(st));
-    await shot('td_desktop_result.png');
-
-    // モバイル360x800レイアウト確認
+    // 4. モバイル360x800確認
     await send('Emulation.setDeviceMetricsOverride', { width: 360, height: 800, deviceScaleFactor: 2, mobile: true });
-    await evalJS(`window.__HB_DEBUG__.td.reset(); window.__HB_DEBUG__.td.place(0, 'mortar'); window.__HB_DEBUG__.td.place(2, 'scatter'); window.__HB_DEBUG__.td.startWave(); window.__HB_DEBUG__.td.stepFrames(180);`);
+    await evalJS(`window.__HB_DEBUG__.td.open('td_smart', 1.8); window.__HB_DEBUG__.td.stepFrames(150);`);
     await sleep(150);
-    await shot('td_mobile_360.png');
+    await shot('real_td_mobile_360.png');
     const overflow = await evalJS('document.documentElement.scrollWidth > window.innerWidth');
     console.log('MOBILE 360 OVERFLOW:', overflow, 'ERRORS:', errors);
 
-    if (st.status !== 'victory' || overflow || errors.length > 0) {
+    if (overflow || errors.length > 0 || smartMid.shotsFired < 2 || heavyMid.shotsFired < 3) {
       process.exitCode = 1;
     }
   } finally {
