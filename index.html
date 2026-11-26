@@ -787,14 +787,14 @@
       energy_pulse: {
         id: 'energy_pulse', kind: 'energy', short: '火薬', name: '火薬',
         density: 1.6, durability: 130, friction: 0.45, restitution: 0.20, unitCost: 1.50,
-        energyPool: 100, releaseRate: 1200, fieldGain: 2.35, consumeOnDetonate: true,
+        energyPool: 100, releaseRate: 1200, fieldGain: 3.0, consumeOnDetonate: true,
         color: '#9f1239', accent: '#fb7185', line: '#e11d48',
         desc: '起爆すると瞬間的に高圧を発生させ消滅する'
       },
       energy_sustained: {
         id: 'energy_sustained', kind: 'energy', short: '推進剤', name: '推進剤',
         density: 1.4, durability: 120, friction: 0.45, restitution: 0.20, unitCost: 1.50,
-        energyPool: 100, releaseRate: 34, fieldGain: 0.48, consumeOnDetonate: false,
+        energyPool: 100, releaseRate: 38, fieldGain: 0.78, consumeOnDetonate: false,
         color: '#9a3412', accent: '#fb923c', line: '#ea580c',
         desc: '約3秒間連続燃焼しノズル形状に応じた推力を生成'
       }
@@ -1005,16 +1005,12 @@
       },
 
       step(dt) {
-        const diffRate = 11.5;
+        const diffRate = 22.0;
         let peak = 0;
         for (let r = 0; r < GRID_ROWS; r++) {
           for (let c = 0; c < GRID_COLS; c++) {
             const idx = TriHexMath.hexIndex(r, c);
             const eCur = this.energy[idx];
-            if (eCur < 0.005) {
-              this.nextEnergy[idx] = 0;
-              continue;
-            }
             const nbs = TriHexMath.hexNeighbors(r, c);
             let netFlow = 0;
             const mySol = this.solid[idx];
@@ -1022,24 +1018,32 @@
               const nb = nbs[d];
               const myBlock = this.edgeBlock[idx * 6 + d];
               if (!nb.valid) {
-                // 地面や画面端
-                const ctr = TriHexMath.hexCenter(r, c);
-                const isFloor = (d === 1 || d === 0 || d === 2) && ctr.y > GROUND_Y - HEX_H * 1.4;
-                if (!isFloor) {
-                  const openFactor = (1 - myBlock) * (1 - mySol * 0.6);
-                  netFlow -= eCur * openFactor * 0.35;
+                if (eCur > 0.005) {
+                  // 地面や画面端
+                  const ctr = TriHexMath.hexCenter(r, c);
+                  const isFloor = (d === 1 || d === 0 || d === 2) && ctr.y > GROUND_Y - HEX_H * 1.4;
+                  if (!isFloor) {
+                    const openFactor = (1 - myBlock) * (1 - mySol * 0.6);
+                    netFlow -= eCur * openFactor * 0.35;
+                  }
                 }
                 continue;
               }
               const nIdx = TriHexMath.hexIndex(nb.r, nb.c);
+              const eNb = this.energy[nIdx];
+              if (eCur < 0.005 && eNb < 0.005) continue;
               const oppD = (d + 3) % 6;
               const nbBlock = this.edgeBlock[nIdx * 6 + oppD];
               const nbSol = this.solid[nIdx];
               const block = Math.max(myBlock, nbBlock, Math.min(mySol, nbSol) * 0.85);
               const cond = Math.max(0.02, 1.0 - block * 0.94);
-              netFlow += (this.energy[nIdx] - eCur) * cond;
+              netFlow += (eNb - eCur) * cond;
             }
 
+            if (eCur < 0.005 && netFlow <= 0.001) {
+              this.nextEnergy[idx] = 0;
+              continue;
+            }
             const decay = Math.exp(-(1.35 + (1 - mySol) * 0.55) * dt);
             const val = Math.max(0, (eCur + netFlow * diffRate * dt * 0.25) * decay);
             this.nextEnergy[idx] = val;
@@ -1091,11 +1095,13 @@
       return { min, max };
     }
 
-    function satTriangleCollision(vA, vB) {
-      let minOverlap = Infinity;
-      let bestNx = 0, bestNy = 0;
+    function satTriangleCollision(vA, vB, expA = null, expB = null) {
+      let minOverlapExp = Infinity;
+      let bestNxExp = 0, bestNyExp = 0;
+      let minOverlapAll = Infinity;
+      let bestNxAll = 0, bestNyAll = 0;
 
-      const testEdges = (verts) => {
+      const testEdges = (verts, exposed) => {
         for (let i = 0; i < 3; i++) {
           const p1 = verts[i];
           const p2 = verts[(i + 1) % 3];
@@ -1108,17 +1114,30 @@
           const prA = projectTri(vA, nx, ny);
           const prB = projectTri(vB, nx, ny);
           const overlap = Math.min(prA.max, prB.max) - Math.max(prA.min, prB.min);
-          if (overlap <= 0) return false;
-          if (overlap < minOverlap) {
-            minOverlap = overlap;
-            bestNx = nx;
-            bestNy = ny;
+          if (overlap <= 0.001) return false;
+          if (overlap < minOverlapAll) {
+            minOverlapAll = overlap;
+            bestNxAll = nx;
+            bestNyAll = ny;
+          }
+          if (!exposed || exposed[i]) {
+            if (overlap < minOverlapExp) {
+              minOverlapExp = overlap;
+              bestNxExp = nx;
+              bestNyExp = ny;
+            }
           }
         }
         return true;
       };
 
-      if (!testEdges(vA) || !testEdges(vB)) return null;
+      if (!testEdges(vA, expA) || !testEdges(vB, expB)) return null;
+
+      // 内部辺（非露出エッジ）でのゴースト引っかかりを防ぐため、露出辺の法線を優先採用
+      const useExp = Number.isFinite(minOverlapExp) && minOverlapExp <= minOverlapAll * 2.4 + 2.5;
+      let minOverlap = useExp ? minOverlapExp : minOverlapAll;
+      let bestNx = useExp ? bestNxExp : bestNxAll;
+      let bestNy = useExp ? bestNyExp : bestNyAll;
 
       // 法線向きを A -> B へ統一
       const cAx = (vA[0].x + vA[1].x + vA[2].x) / 3;
@@ -1517,7 +1536,7 @@
               const pSample = FieldEngine.sampleAt(mx + nx * 13, my + ny * 13);
               if (pSample > maxLocalP) maxLocalP = pSample;
               if (pSample > 0.4) {
-                const forceMag = pSample * len * 1.95;
+                const forceMag = pSample * len * 4.2;
                 const dfx = -nx * forceMag;
                 const dfy = -ny * forceMag;
                 fx += dfx;
@@ -1703,9 +1722,8 @@
             if (A.aabb.maxX < B.aabb.minX || A.aabb.minX > B.aabb.maxX ||
                 A.aabb.maxY < B.aabb.minY || A.aabb.minY > B.aabb.maxY) continue;
 
-            // 外周に露出した三角形同士をSAT判定
-            let bestHit = null;
-            let bestTriA = null, bestTriB = null;
+            // 外周に露出した三角形同士をSAT判定（複数接触点を収集して平板積層の回転暴発を防止）
+            const hits = [];
 
             for (const tA of A.tris) {
               if (tA.hp <= 0 || tA.consumed) continue;
@@ -1717,23 +1735,39 @@
                 const dy = tB.wy - tA.wy;
                 if (dx * dx + dy * dy > (HEX_R * 1.45) ** 2) continue;
 
-                const hit = satTriangleCollision(tA.wv, tB.wv);
-                if (hit && (!bestHit || hit.depth > bestHit.depth)) {
-                  bestHit = hit;
-                  bestTriA = tA;
-                  bestTriB = tB;
+                const hit = satTriangleCollision(tA.wv, tB.wv, tA.exposed, tB.exposed);
+                if (hit) {
+                  hits.push({ hit, tA, tB });
                 }
               }
             }
 
-            if (!bestHit) continue;
+            if (hits.length === 0) continue;
 
-            const { nx, ny, depth, px, py } = bestHit;
+            // 最も深い接触を基準に、同じ法線方向の接触点をマニフォールド統合
+            hits.sort((u, v) => v.hit.depth - u.hit.depth);
+            const primary = hits[0];
+            const { nx, ny, depth } = primary.hit;
             const totalInvMass = A.invMass + B.invMass;
             if (totalInvMass <= 0) continue;
 
-            // 位置補正
-            const corr = Math.max(0, depth - 0.15) * 0.78 / totalInvMass;
+            // 同じ面方向（dot > 0.85）の接触点から平均接触点を算出（静止積層の安定化）
+            let sumPx = 0, sumPy = 0, mCount = 0;
+            for (const item of hits) {
+              if (item.hit.nx * nx + item.hit.ny * ny > 0.85 && item.hit.depth >= depth * 0.35) {
+                sumPx += item.hit.px;
+                sumPy += item.hit.py;
+                mCount++;
+                if (mCount >= 4) break;
+              }
+            }
+            const px = mCount > 0 ? sumPx / mCount : primary.hit.px;
+            const py = mCount > 0 ? sumPy / mCount : primary.hit.py;
+            const bestTriA = primary.tA;
+            const bestTriB = primary.tB;
+
+            // 位置補正（微小なスロップ0.22pxで静止ジッターを抑制）
+            const corr = Math.max(0, depth - 0.22) * 0.72 / totalInvMass;
             A.x -= nx * corr * A.invMass;
             A.y -= ny * corr * A.invMass;
             B.x += nx * corr * B.invMass;
@@ -1751,7 +1785,8 @@
               const mA = MATERIALS[bestTriA.matId];
               const mB = MATERIALS[bestTriB.matId];
               const impactSpd = -velAlongN;
-              const e = impactSpd > 38 ? Math.max(mA.restitution, mB.restitution) : 0;
+              // 低速接触は反発ゼロにして静止積層を安定化
+              const e = impactSpd > 58 ? Math.max(mA.restitution, mB.restitution) : 0;
 
               const rACrossN = rAx * ny - rAy * nx;
               const rBCrossN = rBx * ny - rBy * nx;
@@ -1785,7 +1820,13 @@
               B.vy += jt * ty * B.invMass;
               B.omega += rBCrossT * jt * B.invInertia;
 
-              if (impactSpd > 65) {
+              // 微小振動ダンピング（静止積層の揺れ防止）
+              if (impactSpd < 18 && Math.abs(A.omega) < 0.15 && Math.abs(B.omega) < 0.15) {
+                A.omega *= 0.85;
+                B.omega *= 0.85;
+              }
+
+              if (impactSpd > 85) {
                 this.contacts.push({ x: px, y: py, power: Math.min(1, impactSpd / 400) });
                 this.applyImpactDamage(A, bestTriA, impactSpd, px, py);
                 this.applyImpactDamage(B, bestTriB, impactSpd, px, py);
@@ -2328,10 +2369,13 @@
           ...hexGroup(6, 2, 'energy_pulse')
         ];
         const ball = hexGroup(6, 4, 'elastic');
-        // 60°反射斜面（弾性材）＋中央障害壁
+        // 60°反射斜面（一体結合の弾性ランプ）＋中央障害壁
         const ramp = [
-          ...bandLine(15, 470, 575, 'dense'),
-          ...segmentTriangles(480, 468, 560, 332, 'elastic', 14)
+          ...bandLine(15, 455, 585, 'dense'),
+          ...bandLine(14, 480, 585, 'elastic'),
+          ...bandLine(13, 505, 585, 'elastic'),
+          ...bandLine(12, 530, 585, 'elastic'),
+          ...bandLine(11, 550, 585, 'elastic')
         ];
         const wall = [
           ...bandLine(15, 625, 675, 'dense'),
@@ -5078,6 +5122,90 @@
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('./sw.js').catch(() => {});
       }
+
+      // 自動プレイテスト・物理デバッグ用API
+      window.__HB_DEBUG__ = {
+        loadPreset(key) {
+          loadPreset(key);
+          fitContentToView(true);
+          drawWorld(0);
+        },
+        startSim() {
+          switchMode('sim');
+          state.paused = true; // 決定論的ステップ実行のため手動制御
+          drawWorld(0);
+        },
+        stopSim() {
+          switchMode('design');
+          drawWorld(0);
+        },
+        triggerEnergy() {
+          return PhysicsEngine.triggerAllEnergy();
+        },
+        stepFrames(n = 60, dt = 1 / 60) {
+          for (let i = 0; i < n; i++) {
+            PhysicsEngine.step(dt);
+          }
+          PhysicsAdvisor.evaluate();
+          updateTelemetryHUD();
+          drawWorld(PhysicsEngine.simTime);
+          return this.getSnapshot();
+        },
+        getSnapshot() {
+          let hasNaN = false;
+          let tunneled = false;
+          const bodies = PhysicsEngine.bodies.map((b, idx) => {
+            let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity, aliveTris = 0;
+            const mats = {};
+            for (const tr of b.tris) {
+              if (tr.hp <= 0 || tr.consumed) continue;
+              aliveTris++;
+              mats[tr.matId] = (mats[tr.matId] || 0) + 1;
+              for (const p of tr.wv) {
+                if (!Number.isFinite(p.x) || !Number.isFinite(p.y)) hasNaN = true;
+                if (p.x < minX) minX = p.x;
+                if (p.x > maxX) maxX = p.x;
+                if (p.y < minY) minY = p.y;
+                if (p.y > maxY) maxY = p.y;
+              }
+            }
+            if (!Number.isFinite(b.x) || !Number.isFinite(b.y) || !Number.isFinite(b.vx) || !Number.isFinite(b.vy)) hasNaN = true;
+            if (aliveTris > 0 && b.y > GROUND_Y + 45) tunneled = true;
+            return {
+              idx,
+              x: Math.round(b.x * 10) / 10,
+              y: Math.round(b.y * 10) / 10,
+              vx: Math.round(b.vx * 10) / 10,
+              vy: Math.round(b.vy * 10) / 10,
+              speed: Math.round(Math.hypot(b.vx, b.vy)),
+              mass: Math.round(b.mass * 10) / 10,
+              aliveTris,
+              totalTris: b.tris.length,
+              mats,
+              minX: Number.isFinite(minX) ? Math.round(minX) : null,
+              maxX: Number.isFinite(maxX) ? Math.round(maxX) : null,
+              minY: Number.isFinite(minY) ? Math.round(minY) : null,
+              maxY: Number.isFinite(maxY) ? Math.round(maxY) : null
+            };
+          });
+          return {
+            mode: state.mode,
+            simTime: Math.round(PhysicsEngine.simTime * 100) / 100,
+            hasNaN,
+            tunneled,
+            stats: {
+              maxSpeed: Math.round(PhysicsEngine.stats.maxSpeed),
+              brokenBonds: PhysicsEngine.stats.brokenBonds,
+              destroyedTris: PhysicsEngine.stats.destroyedTris,
+              peakEnergy: Math.round(FieldEngine.peakEnergy * 10) / 10,
+              totalMass: Math.round(PhysicsEngine.stats.totalMass * 10) / 10
+            },
+            bodyCount: bodies.length,
+            bodies,
+            hints: (PhysicsAdvisor.hints || []).map(h => h.title || h.headline || h.text || JSON.stringify(h))
+          };
+        }
+      };
     }
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', bootApp);
