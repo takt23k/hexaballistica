@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>HexaBallistica — 創発物理サンドボックス v0.2 (三角形分割)</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -38,14 +38,18 @@
     }
 
     .btn-tech {
+      touch-action: manipulation;
       transition: transform 0.1s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
-      box-shadow: 0 2px 0 rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.10);
+      box-shadow: 0 2px 0 rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.08);
     }
     .btn-tech:active:not(:disabled) {
       transform: translateY(1.5px);
-      box-shadow: 0 0 0 rgba(0, 0, 0, 0.5);
+      box-shadow: 0 0 0 rgba(0, 0, 0, 0.45);
     }
 
+    .mat-chip {
+      touch-action: manipulation;
+    }
     .mat-chip.active {
       border-color: #fbbf24;
       background: linear-gradient(180deg, rgba(245, 158, 11, 0.28), rgba(245, 158, 11, 0.10));
@@ -56,16 +60,25 @@
       background: linear-gradient(180deg, rgba(244, 63, 94, 0.32), rgba(245, 158, 11, 0.12));
       box-shadow: 0 0 12px rgba(244, 63, 94, 0.32);
     }
+    .tool-chip {
+      touch-action: manipulation;
+      transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    }
     .tool-chip.active {
-      border-color: #22d3ee;
-      background: rgba(6, 182, 212, 0.26);
+      border-color: rgba(34, 211, 238, 0.75);
+      background: rgba(6, 182, 212, 0.24);
       color: #ecfeff;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
     }
     .tool-chip.active-rose {
-      border-color: #fb7185;
-      background: rgba(244, 63, 94, 0.28);
+      border-color: rgba(251, 113, 133, 0.8);
+      background: rgba(244, 63, 94, 0.26);
       color: #ffe4e6;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
     }
+
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
     canvas {
       display: block;
@@ -97,58 +110,60 @@
 </head>
 <body class="h-[100dvh] w-screen overflow-hidden flex flex-col selection:bg-cyan-500/30">
 
-  <!-- ==================== スリムヘッダー ==================== -->
-  <header class="bg-slate-900/95 border-b border-slate-800 px-3 py-1.5 flex items-center justify-between gap-2 shrink-0 z-30">
-    <!-- 左：タイトル＆モード＆統一面積コスト -->
-    <div class="flex items-center gap-2 min-w-0">
-      <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-cyan-400 to-indigo-600 flex items-center justify-center shadow border border-cyan-200/40 shrink-0">
-        <!-- 6分割正六角形アイコン -->
-        <svg class="w-4 h-4 text-slate-950" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polygon points="21,12 16.5,19.8 7.5,19.8 3,12 7.5,4.2 16.5,4.2" fill="rgba(15,23,42,0.16)"></polygon>
-          <line x1="3" y1="12" x2="21" y2="12"></line>
-          <line x1="7.5" y1="4.2" x2="16.5" y2="19.8"></line>
-          <line x1="16.5" y1="4.2" x2="7.5" y2="19.8"></line>
-        </svg>
+  <!-- ==================== スリムヘッダー（レスポンシブ2段→1段） ==================== -->
+  <header class="bg-slate-900/95 border-b border-slate-800/90 px-2.5 sm:px-3 py-1.5 shrink-0 z-30">
+    <div class="max-w-[1480px] mx-auto flex flex-wrap md:flex-nowrap items-center justify-between gap-x-2 gap-y-1.5">
+      <!-- 左：タイトル＆モード＆統一面積コスト -->
+      <div class="flex items-center gap-2 min-w-0 shrink-0 order-1">
+        <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-cyan-400 to-indigo-600 flex items-center justify-center shadow border border-cyan-200/40 shrink-0">
+          <!-- 6分割正六角形アイコン -->
+          <svg class="w-4 h-4 text-slate-950" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="21,12 16.5,19.8 7.5,19.8 3,12 7.5,4.2 16.5,4.2" fill="rgba(15,23,42,0.16)"></polygon>
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="7.5" y1="4.2" x2="16.5" y2="19.8"></line>
+            <line x1="16.5" y1="4.2" x2="7.5" y2="19.8"></line>
+          </svg>
+        </div>
+        <h1 class="font-mono-tech font-extrabold text-[13px] sm:text-base tracking-wider text-cyan-300 leading-none shrink-0">HexaBallistica</h1>
+        <span id="modeBadge" class="hidden lg:inline-block font-mono-tech text-[10px] font-bold px-2 py-0.5 rounded bg-cyan-500/15 text-cyan-300 border border-cyan-500/35 shrink-0">
+          DESIGN
+        </span>
       </div>
-      <h1 class="font-mono-tech font-extrabold text-sm sm:text-base tracking-wider text-cyan-300 leading-none shrink-0">HexaBallistica</h1>
-      <span id="modeBadge" class="hidden md:inline-block font-mono-tech text-[10px] font-bold px-2 py-0.5 rounded bg-cyan-500/15 text-cyan-300 border border-cyan-500/35 shrink-0">
-        DESIGN
-      </span>
-      <div id="costPill" class="font-mono-tech text-[11px] font-bold px-2 py-0.5 rounded-md bg-slate-950 border border-amber-500/35 text-amber-300 shrink-0" title="使用した物質の総面積コスト（1六角=1.00 / 1三角=0.167）">
-        コスト 0.00
+
+      <!-- 中央（モバイルでは2段目左）：創発サンプル選択＆コスト -->
+      <div class="w-full md:w-auto md:flex-1 md:max-w-[360px] flex items-center gap-1.5 order-3 md:order-2 min-w-0">
+        <select id="presetSelect" class="flex-1 min-w-0 bg-slate-800/95 border border-slate-700 hover:border-slate-500 rounded-lg px-2.5 py-1 h-7 text-[11px] sm:text-xs font-bold text-slate-100 cursor-pointer focus:outline-none focus:border-cyan-400 truncate">
+          <option value="" disabled selected>🧪 サンプルを読み込む...</option>
+          <option value="cannon">① 平滑バレル・火薬砲</option>
+          <option value="recoilless">② 楔（くさび）弾＆無反動砲</option>
+          <option value="ricochet">③ 60°斜面バウンド跳弾砲</option>
+          <option value="rocket">④ ノズル形状・推進ロケット</option>
+          <option value="rupture">⑤ 薄肉ケーシング暴発テスト</option>
+          <option value="catapult">⑥ 平板ビーム＆三角支点投石機</option>
+        </select>
+        <div id="costPill" class="font-mono-tech text-[11px] font-bold px-2 h-7 flex items-center rounded-lg bg-slate-950 border border-amber-500/35 text-amber-300 shrink-0 whitespace-nowrap" title="使用した物質の総面積コスト（1六角=1.00 / 1三角=0.167）">
+          コスト 0.00
+        </div>
       </div>
-    </div>
 
-    <!-- 中央：創発サンプル選択 -->
-    <div class="flex-1 max-w-[270px] flex justify-center">
-      <select id="presetSelect" class="w-full bg-slate-800/95 border border-slate-700 hover:border-slate-500 rounded-lg px-2.5 py-1 text-xs font-bold text-slate-100 cursor-pointer focus:outline-none focus:border-cyan-400 truncate">
-        <option value="" disabled selected>🧪 サンプルを読み込む...</option>
-        <option value="cannon">① 平滑バレル・火薬砲</option>
-        <option value="recoilless">② 楔（くさび）弾＆無反動砲</option>
-        <option value="ricochet">③ 60°斜面バウンド跳弾砲</option>
-        <option value="rocket">④ ノズル形状・推進ロケット</option>
-        <option value="rupture">⑤ 薄肉ケーシング暴発テスト</option>
-        <option value="catapult">⑥ 平板ビーム＆三角支点投石機</option>
-      </select>
-    </div>
-
-    <!-- 右：チュートリアル・解析・設計図・ヘルプ・音 -->
-    <div class="flex items-center gap-1.5 shrink-0">
-      <button id="btnStartTutorial" class="btn-tech px-2.5 py-1 rounded-lg bg-indigo-950/90 hover:bg-indigo-900 border border-cyan-400/55 text-xs font-bold text-cyan-200 flex items-center gap-1" title="操作感を覚える5ステップ体験チュートリアル">
-        <span>🎓</span><span class="hidden sm:inline">チュートリアル</span>
-      </button>
-      <button id="btnToggleInspector" class="btn-tech px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-bold text-slate-200 flex items-center gap-1" title="解析データ・可視化設定">
-        <span>📊</span><span class="hidden md:inline">解析</span>
-      </button>
-      <button id="btnOpenBlueprints" class="btn-tech px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-bold text-cyan-300 flex items-center gap-1" title="設計図の保存・コード共有">
-        <span>💾</span><span class="hidden md:inline">設計図</span>
-      </button>
-      <button id="btnGuide" class="btn-tech w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-black text-slate-200 flex items-center justify-center" title="三角形分割と世界法則">
-        ?
-      </button>
-      <button id="btnMute" class="btn-tech w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs flex items-center justify-center" title="効果音 ON/OFF">
-        🔊
-      </button>
+      <!-- 右：チュートリアル・解析・設計図・ヘルプ・音 -->
+      <div class="flex items-center gap-1 sm:gap-1.5 shrink-0 order-2 md:order-3">
+        <button id="btnStartTutorial" class="btn-tech h-7 px-2 sm:px-2.5 rounded-lg bg-indigo-950/90 hover:bg-indigo-900 border border-cyan-400/55 text-xs font-bold text-cyan-200 flex items-center justify-center gap-1" title="操作感を覚える5ステップ体験チュートリアル">
+          <span>🎓</span><span class="hidden sm:inline">チュートリアル</span>
+        </button>
+        <button id="btnToggleInspector" class="btn-tech h-7 w-7 sm:w-auto sm:px-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-bold text-slate-200 flex items-center justify-center gap-1" title="解析データ・可視化設定">
+          <span>📊</span><span class="hidden lg:inline">解析</span>
+        </button>
+        <button id="btnOpenBlueprints" class="btn-tech h-7 w-7 sm:w-auto sm:px-2.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-bold text-cyan-300 flex items-center justify-center gap-1" title="設計図の保存・コード共有">
+          <span>💾</span><span class="hidden lg:inline">設計図</span>
+        </button>
+        <button id="btnGuide" class="btn-tech w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-black text-slate-200 flex items-center justify-center" title="三角形分割と世界法則">
+          ?
+        </button>
+        <button id="btnMute" class="btn-tech w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs flex items-center justify-center" title="効果音 ON/OFF">
+          🔊
+        </button>
+      </div>
     </div>
   </header>
 
@@ -156,23 +171,38 @@
   <main class="flex-1 min-h-0 relative bg-[#050912] overflow-hidden">
     <canvas id="worldCanvas" class="w-full h-full cursor-crosshair"></canvas>
 
-    <!-- 左上フローティング：現在のツール／ホバー情報 -->
-    <div class="absolute top-2.5 left-3 z-10 flex flex-col gap-1.5 pointer-events-none max-w-[74%]">
-      <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-lg bg-slate-950/85 border border-slate-700/80 backdrop-blur-sm font-mono-tech text-[11px] text-slate-200 w-fit">
-        <span id="hoverMain" class="text-cyan-300 font-bold truncate">⬡ 六角配置: クリック/ドラッグで配置（右クリック削除）</span>
-        <span id="hoverSub" class="text-slate-400 hidden sm:inline shrink-0">面積 6/6 = 1.00</span>
+    <!-- 上部フローティングHUDバー（左右が絶対に重ならないフレックス構造） -->
+    <div class="absolute top-2 inset-x-2.5 sm:inset-x-3 z-10 flex items-start justify-between gap-2 pointer-events-none">
+      <!-- 左：現在のツール／ホバー情報＆接続サブバー -->
+      <div class="flex flex-col gap-1.5 min-w-0 flex-1 items-start">
+        <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-lg bg-slate-950/85 border border-slate-700/80 backdrop-blur-sm font-mono-tech text-[11px] text-slate-200 max-w-full">
+          <span id="hoverMain" class="text-cyan-300 font-bold truncate">⬡ 六角配置: クリック/ドラッグで配置</span>
+          <span id="hoverSub" class="text-slate-400 hidden md:inline shrink-0">面積 6/6 = 1.00</span>
+        </div>
+        <!-- 接続ツール専用サブバー（🔗接続選択中のみ表示） -->
+        <div id="bondSubBar" class="hidden pointer-events-auto inline-flex items-center gap-1 p-1 rounded-lg bg-slate-950/92 border border-cyan-500/45 backdrop-blur-sm shadow-lg max-w-full flex-wrap">
+          <button id="btnBondCut" class="px-2 py-0.5 rounded text-[11px] font-bold border border-rose-400/70 bg-rose-500/25 text-rose-200" title="境界線をなぞるか横切って切断（左ドラッグ）">✂ 切る</button>
+          <button id="btnBondJoin" class="px-2 py-0.5 rounded text-[11px] font-bold border border-slate-700 bg-slate-800 text-slate-300 hover:text-white" title="未接続の赤い境界をなぞって再結合（右ドラッグでも可）">🔗 つなぐ</button>
+          <div class="w-px h-4 bg-slate-700 mx-0.5"></div>
+          <button id="btnBondSplitMat" class="px-2 py-0.5 rounded text-[11px] font-bold border border-amber-400/50 bg-amber-500/15 hover:bg-amber-500/25 text-amber-200" title="素材が違うブロック同士の境界をワンクリックで一括分離">⚡ 異素材分離</button>
+        </div>
       </div>
-      <!-- 接続ツール専用サブバー（🔗接続選択中のみ表示） -->
-      <div id="bondSubBar" class="hidden pointer-events-auto inline-flex items-center gap-1 p-1 rounded-lg bg-slate-950/92 border border-cyan-500/45 backdrop-blur-sm shadow-lg w-fit">
-        <button id="btnBondCut" class="px-2 py-0.5 rounded text-[11px] font-bold border border-rose-400/70 bg-rose-500/25 text-rose-200" title="境界線をなぞるか横切って切断（左ドラッグ）">✂ 切る</button>
-        <button id="btnBondJoin" class="px-2 py-0.5 rounded text-[11px] font-bold border border-slate-700 bg-slate-800 text-slate-300 hover:text-white" title="未接続の赤い境界をなぞって再結合（右ドラッグでも可）">🔗 つなぐ</button>
-        <div class="w-px h-4 bg-slate-700 mx-0.5"></div>
-        <button id="btnBondSplitMat" class="px-2 py-0.5 rounded text-[11px] font-bold border border-amber-400/50 bg-amber-500/15 hover:bg-amber-500/25 text-amber-200" title="素材が違うブロック同士の境界をワンクリックで一括分離">⚡ 異素材を一括分離</button>
+
+      <!-- 右：タイマー＆ズーム操作 -->
+      <div class="flex items-center gap-1.5 shrink-0 pointer-events-auto">
+        <div id="simClockPill" class="hidden sm:flex items-center px-2 py-1 h-7 rounded-lg bg-slate-950/85 border border-slate-700/80 backdrop-blur-sm font-mono-tech text-[11px] text-slate-300 whitespace-nowrap">
+          T+ 0.00s
+        </div>
+        <div class="flex items-center bg-slate-950/85 border border-slate-700/80 rounded-lg p-0.5 backdrop-blur-sm h-7">
+          <button id="btnZoomOut" class="w-6 h-6 rounded hover:bg-slate-800 text-slate-200 font-mono-tech font-bold text-sm leading-none flex items-center justify-center" title="縮小">−</button>
+          <button id="btnZoomReset" class="px-1.5 h-6 rounded hover:bg-slate-800 text-slate-300 font-mono-tech text-[10px] font-bold flex items-center justify-center" title="画面全体に戻す">100%</button>
+          <button id="btnZoomIn" class="w-6 h-6 rounded hover:bg-slate-800 text-slate-200 font-mono-tech font-bold text-sm leading-none flex items-center justify-center" title="拡大">+</button>
+        </div>
       </div>
     </div>
 
     <!-- 上部中央フローティング：実践型チュートリアルカード -->
-    <div id="tutorialCard" class="hidden absolute top-11 sm:top-2.5 left-1/2 -translate-x-1/2 z-20 w-[92vw] max-w-[440px] bg-slate-900/95 border border-cyan-400/65 rounded-xl shadow-2xl backdrop-blur-md p-2.5 sm:p-3 space-y-2">
+    <div id="tutorialCard" class="hidden absolute top-11 sm:top-2.5 left-1/2 -translate-x-1/2 z-20 w-[94vw] max-w-[440px] bg-slate-900/95 border border-cyan-400/65 rounded-xl shadow-2xl backdrop-blur-md p-2.5 sm:p-3 space-y-2">
       <div class="flex items-center justify-between gap-2">
         <div class="flex items-center gap-2 min-w-0">
           <span id="tutStepBadge" class="font-mono-tech text-[10px] font-black px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-400/50 shrink-0">STEP 1/5</span>
@@ -189,18 +219,6 @@
         <div id="tutActions" class="flex items-center gap-1.5 shrink-0">
           <button id="btnTutSkipStep" class="px-2 py-0.5 rounded-md bg-slate-800 hover:bg-slate-700 border border-slate-700 text-[10px] font-bold text-slate-300">次へスキップ</button>
         </div>
-      </div>
-    </div>
-
-    <!-- 右上フローティング：タイマー＆ズーム操作 -->
-    <div class="absolute top-2.5 right-3 z-10 flex items-center gap-1.5">
-      <div id="simClockPill" class="px-2.5 py-1 rounded-lg bg-slate-950/85 border border-slate-700/80 backdrop-blur-sm font-mono-tech text-[11px] text-slate-300">
-        T+ 0.00s
-      </div>
-      <div class="flex items-center bg-slate-950/85 border border-slate-700/80 rounded-lg p-0.5 backdrop-blur-sm">
-        <button id="btnZoomOut" class="w-6 h-6 rounded hover:bg-slate-800 text-slate-200 font-mono-tech font-bold text-sm leading-none" title="縮小">−</button>
-        <button id="btnZoomReset" class="px-1.5 h-6 rounded hover:bg-slate-800 text-slate-300 font-mono-tech text-[10px] font-bold" title="画面全体に戻す">100%</button>
-        <button id="btnZoomIn" class="w-6 h-6 rounded hover:bg-slate-800 text-slate-200 font-mono-tech font-bold text-sm leading-none" title="拡大">+</button>
       </div>
     </div>
 
@@ -293,64 +311,67 @@
   </main>
 
   <!-- ==================== 下部スッキリ操作ドック（モード連動） ==================== -->
-  <footer class="bg-slate-900/95 border-t border-slate-800 px-2.5 sm:px-3 py-2 shrink-0 z-30">
-    <!-- 設計モード用ドック -->
-    <div id="dockDesign" class="max-w-[1480px] mx-auto flex flex-wrap items-center justify-between gap-2">
-      <!-- 6種の基本物質・エネルギー素材 -->
-      <div id="elementChips" class="flex items-center gap-1 overflow-x-auto py-0.5"></div>
+  <footer class="bg-slate-900/95 border-t border-slate-800/90 px-2.5 sm:px-3 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] shrink-0 z-30">
+    <!-- 設計モード用ドック（モバイル: 3段スッキリ整列 / デスクトップ: 1段） -->
+    <div id="dockDesign" class="max-w-[1480px] mx-auto flex flex-col lg:flex-row lg:items-center lg:justify-between gap-1.5 lg:gap-2">
+      <!-- 1段目：6種の基本物質・エネルギー素材（モバイルは6列均等グリッドで横スクロール不要） -->
+      <div id="elementChips" class="grid grid-cols-6 lg:flex lg:items-center gap-1 w-full lg:w-auto"></div>
 
-      <!-- 形状編集＆描画ツールバー -->
-      <div class="flex items-center gap-1.5 flex-wrap">
-        <div class="flex items-center bg-slate-950 p-0.5 rounded-lg border border-slate-800 gap-0.5">
-          <button id="btnToolHex" class="tool-chip active px-2 py-1.5 rounded-md text-xs font-bold border border-transparent" title="標準配置：六角形まるごと(6/6 = コスト1.00)を配置">⬡ 六角</button>
-          <button id="btnToolTri" class="tool-chip px-2 py-1.5 rounded-md text-xs font-bold border border-transparent text-amber-200" title="形状編集：1/6の正三角形(コスト0.167)単位で配置・造形">△ 三角</button>
-          <button id="btnToolLine" class="tool-chip px-2 py-1.5 rounded-md text-xs font-bold border border-transparent text-emerald-300" title="直線描画：ドラッグで平滑な水平壁・60°斜面を一気に描画">╱ 直線</button>
-          <button id="btnToolCarve" class="tool-chip px-2 py-1.5 rounded-md text-xs font-bold border border-transparent text-rose-300" title="切断・削り：三角形単位で物質を削る・くり抜く">✂ 削り</button>
-          <button id="btnToolBond" class="tool-chip px-2 py-1.5 rounded-md text-xs font-bold border border-transparent text-cyan-300" title="接続切替：共有辺をクリックまたはドラッグ横断して分離/結合">🔗 接続</button>
+      <!-- 2段目：形状編集＆描画ツールバー（モバイルは5列均等セグメント） -->
+      <div class="flex items-center gap-1.5 w-full lg:w-auto">
+        <div class="grid grid-cols-5 lg:flex lg:items-center bg-slate-950 p-0.5 rounded-lg border border-slate-800 gap-0.5 flex-1 lg:flex-initial">
+          <button id="btnToolHex" class="tool-chip active px-1 sm:px-2 py-1.5 rounded-md text-[11px] sm:text-xs font-bold border border-transparent flex items-center justify-center gap-0.5 whitespace-nowrap" title="標準配置：六角形まるごと(6/6 = コスト1.00)を配置"><span>⬡</span><span>六角</span></button>
+          <button id="btnToolTri" class="tool-chip px-1 sm:px-2 py-1.5 rounded-md text-[11px] sm:text-xs font-bold border border-transparent text-amber-200 flex items-center justify-center gap-0.5 whitespace-nowrap" title="形状編集：1/6の正三角形(コスト0.167)単位で配置・造形"><span>△</span><span>三角</span></button>
+          <button id="btnToolLine" class="tool-chip px-1 sm:px-2 py-1.5 rounded-md text-[11px] sm:text-xs font-bold border border-transparent text-emerald-300 flex items-center justify-center gap-0.5 whitespace-nowrap" title="直線描画：ドラッグで平滑な水平壁・60°斜面を一気に描画"><span>╱</span><span>直線</span></button>
+          <button id="btnToolCarve" class="tool-chip px-1 sm:px-2 py-1.5 rounded-md text-[11px] sm:text-xs font-bold border border-transparent text-rose-300 flex items-center justify-center gap-0.5 whitespace-nowrap" title="切断・削り：三角形単位で物質を削る・くり抜く"><span>✂</span><span>削り</span></button>
+          <button id="btnToolBond" class="tool-chip px-1 sm:px-2 py-1.5 rounded-md text-[11px] sm:text-xs font-bold border border-transparent text-cyan-300 flex items-center justify-center gap-0.5 whitespace-nowrap" title="接続切替：共有辺をクリックまたはドラッグ横断して分離/結合"><span>🔗</span><span>接続</span></button>
         </div>
-
-        <button id="btnAutoBond" class="btn-tech px-2 py-1.5 rounded-lg border border-emerald-500/50 bg-emerald-950/40 text-emerald-300 text-xs font-bold" title="OFFにして配置すると既存構造と切り離された独立剛体（砲弾・可動部品）になる">
-          自動接続: ON
-        </button>
-
-        <button id="btnUndo" class="btn-tech px-2 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-bold text-slate-200" title="1つ戻す">↩</button>
-        <button id="btnClear" class="btn-tech px-2 py-1.5 rounded-lg bg-slate-800 hover:bg-rose-900/60 border border-slate-700 text-xs font-bold text-rose-300" title="全消去">🗑</button>
       </div>
 
-      <!-- 実行アクション -->
-      <div class="flex items-center gap-1.5 ml-auto sm:ml-0">
-        <button id="btnAutoIgnite" class="btn-tech px-2 py-1.5 rounded-lg border border-amber-500/45 bg-amber-500/15 text-amber-300 text-xs font-bold" title="実行開始時に火薬・推進剤を自動点火">
-          ⚡自動点火
-        </button>
-        <button id="btnStartSim" class="btn-tech px-4 py-1.5 rounded-lg bg-gradient-to-r from-emerald-400 to-cyan-400 hover:from-emerald-300 hover:to-cyan-300 text-slate-950 font-black text-xs sm:text-sm tracking-wide">
-          ▶ 実行
-        </button>
+      <!-- 3段目：編集補助＆実行アクション（1行にバランス良く配置） -->
+      <div class="flex items-center justify-between lg:justify-end gap-1.5 w-full lg:w-auto">
+        <div class="flex items-center gap-1 sm:gap-1.5">
+          <button id="btnAutoBond" class="btn-tech h-8 px-2 rounded-lg border border-emerald-500/50 bg-emerald-950/40 text-emerald-300 text-[11px] sm:text-xs font-bold whitespace-nowrap flex items-center" title="OFFにして配置すると既存構造と切り離された独立剛体（砲弾・可動部品）になる">
+            自動接続: ON
+          </button>
+          <button id="btnUndo" class="btn-tech h-8 w-8 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-bold text-slate-200 flex items-center justify-center" title="1つ戻す">↩</button>
+          <button id="btnClear" class="btn-tech h-8 w-8 rounded-lg bg-slate-800 hover:bg-rose-900/60 border border-slate-700 text-xs font-bold text-rose-300 flex items-center justify-center" title="全消去">🗑</button>
+        </div>
+
+        <div class="flex items-center gap-1.5">
+          <button id="btnAutoIgnite" class="btn-tech h-8 px-2 rounded-lg border border-amber-500/45 bg-amber-500/15 text-amber-300 text-[11px] sm:text-xs font-bold whitespace-nowrap flex items-center" title="実行開始時に火薬・推進剤を自動点火">
+            ⚡自動点火
+          </button>
+          <button id="btnStartSim" class="btn-tech h-8 px-3.5 sm:px-4 rounded-lg bg-gradient-to-r from-emerald-400 to-cyan-400 hover:from-emerald-300 hover:to-cyan-300 text-slate-950 font-black text-xs sm:text-sm tracking-wide whitespace-nowrap flex items-center">
+            ▶ 実行
+          </button>
+        </div>
       </div>
     </div>
 
     <!-- シミュレーション中用ドック -->
-    <div id="dockSim" class="hidden max-w-[1480px] mx-auto flex flex-wrap items-center justify-between gap-2">
-      <div class="flex items-center gap-1.5 flex-wrap">
-        <button id="btnBackToDesign" class="btn-tech px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-cyan-500/50 text-cyan-200 font-bold text-xs sm:text-sm">
-          ← 設計へ戻る
+    <div id="dockSim" class="hidden max-w-[1480px] mx-auto flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 sm:gap-2">
+      <div class="grid grid-cols-3 sm:flex sm:items-center gap-1.5 w-full sm:w-auto">
+        <button id="btnBackToDesign" class="btn-tech h-8 px-2.5 sm:px-3.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-cyan-500/50 text-cyan-200 font-bold text-xs sm:text-sm whitespace-nowrap flex items-center justify-center">
+          ← 設計<span class="hidden sm:inline">へ戻る</span>
         </button>
-        <button id="btnRestartSim" class="btn-tech px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs sm:text-sm">
+        <button id="btnRestartSim" class="btn-tech h-8 px-2.5 sm:px-3 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs sm:text-sm whitespace-nowrap flex items-center justify-center">
           ↺ 再実行
         </button>
-        <button id="btnTriggerEnergy" class="btn-tech px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-rose-500 to-orange-500 hover:from-rose-400 hover:to-orange-400 text-white font-black text-xs sm:text-sm">
-          ⚡ 点火 (SPACE)
+        <button id="btnTriggerEnergy" class="btn-tech h-8 px-2.5 sm:px-3.5 rounded-lg bg-gradient-to-r from-rose-500 to-orange-500 hover:from-rose-400 hover:to-orange-400 text-white font-black text-xs sm:text-sm whitespace-nowrap flex items-center justify-center">
+          ⚡ 点火<span class="hidden sm:inline ml-1">(SPACE)</span>
         </button>
       </div>
 
-      <div class="flex items-center bg-slate-950 rounded-lg p-0.5 border border-slate-800 gap-1">
-        <button id="btnPause" class="px-2.5 py-1 rounded-md text-xs font-mono-tech font-bold bg-slate-800 hover:bg-slate-700 text-slate-100" title="一時停止">⏸</button>
-        <button id="btnStep" class="px-2.5 py-1 rounded-md text-xs font-mono-tech font-bold bg-slate-800 hover:bg-slate-700 text-slate-100" title="1フレーム送り">⏭1F</button>
-        <button data-speed="0.2" class="speed-btn px-2 py-1 rounded-md text-xs font-mono-tech font-bold bg-slate-800 text-slate-400 hover:text-white">0.2x</button>
-        <button data-speed="0.5" class="speed-btn px-2 py-1 rounded-md text-xs font-mono-tech font-bold bg-slate-800 text-slate-400 hover:text-white">0.5x</button>
-        <button data-speed="1" class="speed-btn px-2 py-1 rounded-md text-xs font-mono-tech font-bold bg-cyan-500 text-slate-950">1x</button>
+      <div class="grid grid-cols-5 sm:flex sm:items-center bg-slate-950 rounded-lg p-0.5 border border-slate-800 gap-1 w-full sm:w-auto">
+        <button id="btnPause" class="h-7 px-2.5 rounded-md text-xs font-mono-tech font-bold bg-slate-800 hover:bg-slate-700 text-slate-100 flex items-center justify-center" title="一時停止">⏸</button>
+        <button id="btnStep" class="h-7 px-2.5 rounded-md text-xs font-mono-tech font-bold bg-slate-800 hover:bg-slate-700 text-slate-100 flex items-center justify-center" title="1フレーム送り">⏭1F</button>
+        <button data-speed="0.2" class="speed-btn h-7 px-2 rounded-md text-xs font-mono-tech font-bold bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center">0.2x</button>
+        <button data-speed="0.5" class="speed-btn h-7 px-2 rounded-md text-xs font-mono-tech font-bold bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center">0.5x</button>
+        <button data-speed="1" class="speed-btn h-7 px-2 rounded-md text-xs font-mono-tech font-bold bg-cyan-500 text-slate-950 flex items-center justify-center">1x</button>
       </div>
 
-      <div class="hidden md:flex items-center gap-1">
+      <div class="hidden lg:flex items-center gap-1">
         <button data-vis="field" class="vis-btn px-2 py-1 rounded-md text-xs font-bold border border-orange-400/60 bg-orange-500/20 text-orange-200">🔥場</button>
         <button data-vis="bonds" class="vis-btn px-2 py-1 rounded-md text-xs font-bold border border-cyan-400/60 bg-cyan-500/20 text-cyan-200">🔗接続</button>
         <button data-vis="mesh" class="vis-btn px-2 py-1 rounded-md text-xs font-bold border border-slate-700 bg-slate-800 text-slate-400">△分割</button>
@@ -3357,11 +3378,14 @@
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.dataset.mat = m.id;
-        btn.className = 'mat-chip btn-tech px-2 py-1.5 rounded-lg border border-slate-700 bg-slate-950/90 hover:border-slate-500 flex items-center gap-1.5 shrink-0';
+        btn.className = 'mat-chip btn-tech px-1 sm:px-2 py-1.5 rounded-lg border border-slate-700 bg-slate-950/90 hover:border-slate-500 flex items-center justify-center gap-1 sm:gap-1.5 min-w-0';
         btn.title = `${m.name}: ${m.desc}`;
+        const labelHtml = m.short.length > 2
+          ? `<span class="text-[11px] sm:text-xs font-bold text-slate-100 truncate">${m.short.slice(0, 2)}<span class="hidden sm:inline">${m.short.slice(2)}</span></span>`
+          : `<span class="text-[11px] sm:text-xs font-bold text-slate-100 truncate">${m.short}</span>`;
         btn.innerHTML = `
-          <span class="w-3 h-3 rounded-sm inline-block shrink-0" style="background:${m.color}; border:1.5px solid ${m.accent}"></span>
-          <span class="text-xs font-bold text-slate-100">${m.short}</span>
+          <span class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-sm inline-block shrink-0" style="background:${m.color}; border:1.5px solid ${m.accent}"></span>
+          ${labelHtml}
         `;
         btn.addEventListener('click', () => {
           state.selectedMat = m.id;
@@ -3483,8 +3507,11 @@
       el.bondSubBar.classList.toggle('hidden', live || state.tool !== 'bond');
       el.modeBadge.textContent = live ? 'LIVE' : 'DESIGN';
       el.modeBadge.className = live
-        ? 'hidden md:inline-block font-mono-tech text-[10px] font-bold px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40 shrink-0'
-        : 'hidden md:inline-block font-mono-tech text-[10px] font-bold px-2 py-0.5 rounded bg-cyan-500/15 text-cyan-300 border border-cyan-500/35 shrink-0';
+        ? 'hidden lg:inline-block font-mono-tech text-[10px] font-bold px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40 shrink-0'
+        : 'hidden lg:inline-block font-mono-tech text-[10px] font-bold px-2 py-0.5 rounded bg-cyan-500/15 text-cyan-300 border border-cyan-500/35 shrink-0';
+      el.simClockPill.classList.toggle('hidden', !live);
+      el.simClockPill.classList.toggle('flex', live);
+      el.simClockPill.classList.toggle('sm:flex', true);
 
       if (live) {
         state.paused = false;
@@ -3525,8 +3552,8 @@
 
     function syncAutoIgniteUI() {
       el.btnAutoIgnite.className = state.autoIgnite
-        ? 'btn-tech px-2 py-1.5 rounded-lg border border-amber-500/45 bg-amber-500/15 text-amber-300 text-xs font-bold'
-        : 'btn-tech px-2 py-1.5 rounded-lg border border-slate-700 bg-slate-800 text-slate-400 text-xs font-bold';
+        ? 'btn-tech h-8 px-2 rounded-lg border border-amber-500/45 bg-amber-500/15 text-amber-300 text-[11px] sm:text-xs font-bold whitespace-nowrap flex items-center'
+        : 'btn-tech h-8 px-2 rounded-lg border border-slate-700 bg-slate-800 text-slate-400 text-[11px] sm:text-xs font-bold whitespace-nowrap flex items-center';
       el.btnAutoIgnite.textContent = state.autoIgnite ? '⚡自動点火' : '⚡手動点火';
     }
 
@@ -3811,8 +3838,8 @@
         state.autoBond = !state.autoBond;
         el.btnAutoBond.textContent = state.autoBond ? '自動接続: ON' : '自動接続: OFF';
         el.btnAutoBond.className = state.autoBond
-          ? 'btn-tech px-2 py-1.5 rounded-lg border border-emerald-500/50 bg-emerald-950/40 text-emerald-300 text-xs font-bold'
-          : 'btn-tech px-2 py-1.5 rounded-lg border border-amber-500/50 bg-amber-950/40 text-amber-300 text-xs font-bold';
+          ? 'btn-tech h-8 px-2 rounded-lg border border-emerald-500/50 bg-emerald-950/40 text-emerald-300 text-[11px] sm:text-xs font-bold whitespace-nowrap flex items-center'
+          : 'btn-tech h-8 px-2 rounded-lg border border-amber-500/50 bg-amber-950/40 text-amber-300 text-[11px] sm:text-xs font-bold whitespace-nowrap flex items-center';
         SoundFX.click(state.autoBond ? 560 : 380);
       });
 
@@ -3866,8 +3893,8 @@
           document.querySelectorAll('.speed-btn').forEach(b => {
             const act = parseFloat(b.dataset.speed) === state.simSpeed;
             b.className = act
-              ? 'speed-btn px-2 py-1 rounded-md text-xs font-mono-tech font-bold bg-cyan-500 text-slate-950'
-              : 'speed-btn px-2 py-1 rounded-md text-xs font-mono-tech font-bold bg-slate-800 text-slate-400 hover:text-white';
+              ? 'speed-btn h-7 px-2 rounded-md text-xs font-mono-tech font-bold bg-cyan-500 text-slate-950 flex items-center justify-center'
+              : 'speed-btn h-7 px-2 rounded-md text-xs font-mono-tech font-bold bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center';
           });
         });
       });
