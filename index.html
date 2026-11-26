@@ -981,18 +981,23 @@
             const hex = TriHexMath.worldToHex(tri.wx, tri.wy);
             if (!hex) continue;
             const idx = TriHexMath.hexIndex(hex.r, hex.c);
-            this.solid[idx] = Math.min(1.0, this.solid[idx] + 0.26);
+            this.solid[idx] = Math.min(1.0, this.solid[idx] + 1 / 6);
 
-            // 三角形の重心が向く側の方向辺を遮蔽する
+            // 三角形の重心が向く側の方向辺だけを正確に遮蔽（水平砲身通路を塞がず壁抜けゼロ）
             const ctr = TriHexMath.hexCenter(hex.r, hex.c);
             let ang = Math.atan2(tri.wy - ctr.y, tri.wx - ctr.x);
             if (ang < 0) ang += Math.PI * 2;
             const d = Math.floor(ang / (Math.PI / 3)) % 6;
             const bBase = idx * 6;
-            const weight = mat.density > 2.5 ? 0.96 : 0.84;
+            const weight = mat.density >= 1.5 ? 1.0 : 0.96;
             this.edgeBlock[bBase + d] = Math.max(this.edgeBlock[bBase + d], weight);
-            this.edgeBlock[bBase + ((d + 5) % 6)] = Math.max(this.edgeBlock[bBase + ((d + 5) % 6)], weight * 0.45);
-            this.edgeBlock[bBase + ((d + 1) % 6)] = Math.max(this.edgeBlock[bBase + ((d + 1) % 6)], weight * 0.45);
+          }
+        }
+        // 5三角以上（solid >= 0.85）で完全に埋まった六角セルのみ全6方向を遮蔽
+        for (let idx = 0; idx < TOTAL_HEX; idx++) {
+          if (this.solid[idx] >= 0.85) {
+            const bBase = idx * 6;
+            for (let d = 0; d < 6; d++) this.edgeBlock[bBase + d] = 1.0;
           }
         }
       },
@@ -1005,22 +1010,31 @@
       },
 
       step(dt) {
-        const diffRate = 22.0;
+        const diffRate = 24.0;
         let peak = 0;
         for (let r = 0; r < GRID_ROWS; r++) {
           for (let c = 0; c < GRID_COLS; c++) {
             const idx = TriHexMath.hexIndex(r, c);
+            const ctr = TriHexMath.hexCenter(r, c);
+            // 地面より下のセルには圧力を流さない
+            if (ctr.y > GROUND_Y - 4) {
+              this.nextEnergy[idx] = 0;
+              continue;
+            }
             const eCur = this.energy[idx];
+            const mySol = this.solid[idx];
+            // 完全に物質で詰まった壁セル内部には圧力を溜めない
+            if (mySol >= 0.82) {
+              this.nextEnergy[idx] = 0;
+              continue;
+            }
             const nbs = TriHexMath.hexNeighbors(r, c);
             let netFlow = 0;
-            const mySol = this.solid[idx];
             for (let d = 0; d < 6; d++) {
               const nb = nbs[d];
               const myBlock = this.edgeBlock[idx * 6 + d];
               if (!nb.valid) {
                 if (eCur > 0.005) {
-                  // 地面や画面端
-                  const ctr = TriHexMath.hexCenter(r, c);
                   const isFloor = (d === 1 || d === 0 || d === 2) && ctr.y > GROUND_Y - HEX_H * 1.4;
                   if (!isFloor) {
                     const openFactor = (1 - myBlock) * (1 - mySol * 0.6);
@@ -1029,14 +1043,18 @@
                 }
                 continue;
               }
+              const nCtr = TriHexMath.hexCenter(nb.r, nb.c);
+              if (nCtr.y > GROUND_Y - 4) continue;
               const nIdx = TriHexMath.hexIndex(nb.r, nb.c);
               const eNb = this.energy[nIdx];
               if (eCur < 0.005 && eNb < 0.005) continue;
               const oppD = (d + 3) % 6;
               const nbBlock = this.edgeBlock[nIdx * 6 + oppD];
               const nbSol = this.solid[nIdx];
-              const block = Math.max(myBlock, nbBlock, Math.min(mySol, nbSol) * 0.85);
-              const cond = Math.max(0.02, 1.0 - block * 0.94);
+              // 共有面のどちらかが壁で塞がれているか、隣が完全充実セルなら伝導率ゼロ（壁抜け防止）
+              const block = Math.max(myBlock, nbBlock, nbSol >= 0.85 ? 1.0 : 0, mySol >= 0.85 ? 1.0 : 0);
+              const cond = Math.max(0, 1.0 - block);
+              if (cond <= 0.001) continue;
               netFlow += (eNb - eCur) * cond;
             }
 
@@ -1149,23 +1167,37 @@
         bestNy = -bestNy;
       }
 
-      // 接触点近似（Aの最も深い頂点とBの最も深い頂点の中間）
-      let deepA = vA[0], maxA = -Infinity;
-      for (const p of vA) {
-        const d = p.x * bestNx + p.y * bestNy;
-        if (d > maxA) { maxA = d; deepA = p; }
-      }
-      let deepB = vB[0], minB = Infinity;
-      for (const p of vB) {
-        const d = p.x * bestNx + p.y * bestNy;
-        if (d < minB) { minB = d; deepB = p; }
+      // 接触点近似（水平面接触時は重複区間の中点を使って不要な回転トルクを防止）
+      let px, py;
+      if (Math.abs(bestNy) > 0.92) {
+        const minAx = Math.min(vA[0].x, vA[1].x, vA[2].x);
+        const maxAx = Math.max(vA[0].x, vA[1].x, vA[2].x);
+        const minBx = Math.min(vB[0].x, vB[1].x, vB[2].x);
+        const maxBx = Math.max(vB[0].x, vB[1].x, vB[2].x);
+        px = (Math.max(minAx, minBx) + Math.min(maxAx, maxBx)) * 0.5;
+        let deepAy = bestNy > 0 ? Math.max(vA[0].y, vA[1].y, vA[2].y) : Math.min(vA[0].y, vA[1].y, vA[2].y);
+        let deepBy = bestNy > 0 ? Math.min(vB[0].y, vB[1].y, vB[2].y) : Math.max(vB[0].y, vB[1].y, vB[2].y);
+        py = (deepAy + deepBy) * 0.5;
+      } else {
+        let deepA = vA[0], maxA = -Infinity;
+        for (const p of vA) {
+          const d = p.x * bestNx + p.y * bestNy;
+          if (d > maxA) { maxA = d; deepA = p; }
+        }
+        let deepB = vB[0], minB = Infinity;
+        for (const p of vB) {
+          const d = p.x * bestNx + p.y * bestNy;
+          if (d < minB) { minB = d; deepB = p; }
+        }
+        px = (deepA.x + deepB.x) * 0.5;
+        py = (deepA.y + deepB.y) * 0.5;
       }
       return {
         nx: bestNx,
         ny: bestNy,
         depth: minOverlap,
-        px: (deepA.x + deepB.x) * 0.5,
-        py: (deepA.y + deepB.y) * 0.5
+        px,
+        py
       };
     }
 
@@ -1364,6 +1396,50 @@
           jamPoint: null
         };
 
+        // 初期静止支持チェック：地面から直接/間接に水平支持されており火薬を含まない剛体は初期スリープ
+        // （標的タワーが着弾前に自重で微動・沈み込みするのを完全防止。衝突・圧力・支持喪失で即起床）
+        const supportedSet = new Set();
+        const supQueue = [];
+        for (const b of this.bodies) {
+          const hasEnergy = b.tris.some(tr => MATERIALS[tr.matId].kind === 'energy');
+          if (!hasEnergy && b.aabb.maxY >= GROUND_Y - 2.5) {
+            // 接地幅が十分にある（転倒しにくい）場合のみ初期静止とみなす
+            let gMinX = Infinity, gMaxX = -Infinity;
+            for (const tr of b.tris) {
+              for (const v of tr.wv) {
+                if (v.y >= GROUND_Y - 3) {
+                  if (v.x < gMinX) gMinX = v.x;
+                  if (v.x > gMaxX) gMaxX = v.x;
+                }
+              }
+            }
+            if (gMaxX - gMinX >= 20 && b.x >= gMinX - 8 && b.x <= gMaxX + 8) {
+              supportedSet.add(b);
+              supQueue.push(b);
+            }
+          }
+        }
+        while (supQueue.length > 0) {
+          const base = supQueue.shift();
+          for (const other of this.bodies) {
+            if (supportedSet.has(other)) continue;
+            const hasEnergy = other.tris.some(tr => MATERIALS[tr.matId].kind === 'energy');
+            if (hasEnergy) continue;
+            // base の真上に水平に載っており、重心が支持範囲内にある場合
+            const yTouch = Math.abs(other.aabb.maxY - base.aabb.minY) <= 3.5;
+            const xOverlap = Math.min(other.aabb.maxX, base.aabb.maxX) - Math.max(other.aabb.minX, base.aabb.minX);
+            if (yTouch && xOverlap >= 24 && other.x >= base.aabb.minX - 6 && other.x <= base.aabb.maxX + 6) {
+              supportedSet.add(other);
+              supQueue.push(other);
+            }
+          }
+        }
+        for (const b of supportedSet) {
+          b.sleeping = true;
+          b.supported = true;
+          b.sleepFrames = 10;
+        }
+
         if (autoIgnite && this.hasAnyEnergyTri()) {
           SoundFX.energyPulse(1.0);
           this.emitEvent('シミュレーション開始・火薬/推進剤に点火', 'warn');
@@ -1410,7 +1486,10 @@
           bonds,
           aabb: { minX: 0, maxX: 0, minY: 0, maxY: 0 },
           needsSplitCheck: false,
-          peakSpeed: 0
+          peakSpeed: 0,
+          sleeping: false,
+          sleepFrames: 0,
+          supported: false
         };
         this.updateBodyWorldVerts(body);
         return body;
@@ -1504,7 +1583,8 @@
 
         // 2. 圧力場の外周面積分（F = -∮ P n ds）＋ 内圧による構造負荷
         for (const body of this.bodies) {
-          let fx = 0, fy = GRAVITY * body.mass, torque = 0;
+          body.supported = false;
+          let pfx = 0, pfy = 0, torque = 0;
 
           for (const tri of body.tris) {
             tri.hitFlash = Math.max(0, tri.hitFlash - dt * 5);
@@ -1539,8 +1619,8 @@
                 const forceMag = pSample * len * 5.8;
                 const dfx = -nx * forceMag;
                 const dfy = -ny * forceMag;
-                fx += dfx;
-                fy += dfy;
+                pfx += dfx;
+                pfy += dfy;
                 torque += (mx - body.x) * dfy - (my - body.y) * dfx;
               }
             }
@@ -1559,6 +1639,12 @@
             }
           }
 
+          // 圧力を受けたらスリープ解除
+          if (Math.hypot(pfx, pfy) > 10 || Math.abs(torque) > 80) {
+            body.sleeping = false;
+            body.sleepFrames = 0;
+          }
+
           // 内部ボンドへの過圧引張負荷
           if (FieldEngine.peakEnergy > 35 && body.bonds.length > 0) {
             for (const bond of body.bonds) {
@@ -1575,6 +1661,16 @@
               }
             }
           }
+
+          if (body.sleeping) {
+            body.vx = 0;
+            body.vy = 0;
+            body.omega = 0;
+            continue;
+          }
+
+          const fx = pfx;
+          const fy = GRAVITY * body.mass + pfy;
 
           // 速度・角速度更新（軽微な空気減衰）
           body.vx = (body.vx + fx * body.invMass * dt) * (1 - 0.08 * dt);
@@ -1595,6 +1691,7 @@
         const subDt = dt / subSteps;
         for (let s = 0; s < subSteps; s++) {
           for (const body of this.bodies) {
+            if (body.sleeping) continue;
             body.x += body.vx * subDt;
             body.y += body.vy * subDt;
             body.angle += body.omega * subDt;
@@ -1603,6 +1700,25 @@
           for (let iter = 0; iter < 3; iter++) {
             this.resolveWorldBounds();
             this.resolveBodyCollisions(iter === 0);
+          }
+        }
+
+        // 3.5 静止スリープ判定（弾が当たる前のタワーの微小ズレを完全ゼロに）
+        for (const body of this.bodies) {
+          if (body.sleeping) continue;
+          const spd = Math.hypot(body.vx, body.vy);
+          if (body.supported && spd < 12 && Math.abs(body.omega) < 0.08) {
+            body.vx *= 0.65;
+            body.omega *= 0.55;
+            body.sleepFrames++;
+            if (body.sleepFrames >= 8) {
+              body.sleeping = true;
+              body.vx = 0;
+              body.vy = 0;
+              body.omega = 0;
+            }
+          } else {
+            body.sleepFrames = 0;
           }
         }
 
@@ -1654,6 +1770,7 @@
             }
           }
           if (groundHits.length > 0) {
+            body.supported = true;
             let maxPen = 0;
             for (const h of groundHits) if (h.pen > maxPen) maxPen = h.pen;
             body.y -= maxPen;
@@ -1715,16 +1832,35 @@
         }
       },
 
+      wakeIsland(seedBody) {
+        const q = [seedBody];
+        seedBody.sleeping = false;
+        seedBody.sleepFrames = 0;
+        while (q.length > 0) {
+          const cur = q.shift();
+          for (const other of this.bodies) {
+            if (!other.sleeping) continue;
+            if (cur.aabb.maxX + 4 >= other.aabb.minX && cur.aabb.minX - 4 <= other.aabb.maxX &&
+                cur.aabb.maxY + 4 >= other.aabb.minY && cur.aabb.minY - 4 <= other.aabb.maxY) {
+              other.sleeping = false;
+              other.sleepFrames = 0;
+              q.push(other);
+            }
+          }
+        }
+      },
+
       resolveBodyCollisions(allowDamage = true) {
         // 下にある剛体から順に解決（多段タワーの沈み込み・すり抜けを防止）
         const order = this.bodies.map((_, idx) => idx).sort((a, b) => this.bodies[b].y - this.bodies[a].y);
         const n = order.length;
         for (let oi = 0; oi < n; oi++) {
-          const A = this.bodies[order[oi]];
-          for (let oj = oi + 1; oj < n; oj++) {
-            const B = this.bodies[order[oj]];
-            if (A.aabb.maxX < B.aabb.minX || A.aabb.minX > B.aabb.maxX ||
-                A.aabb.maxY < B.aabb.minY || A.aabb.minY > B.aabb.maxY) continue;
+            const A = this.bodies[order[oi]];
+            for (let oj = oi + 1; oj < n; oj++) {
+              const B = this.bodies[order[oj]];
+              if (A.sleeping && B.sleeping) continue;
+              if (A.aabb.maxX < B.aabb.minX || A.aabb.minX > B.aabb.maxX ||
+                  A.aabb.maxY < B.aabb.minY || A.aabb.minY > B.aabb.maxY) continue;
 
             // 外周に露出した三角形同士をSAT判定（複数接触点を収集して平板積層の回転暴発を防止）
             const hits = [];
@@ -1786,9 +1922,19 @@
             const velAlongN = rvx * nx + rvy * ny;
 
             if (velAlongN < 0) {
+              const impactSpd = -velAlongN;
+              // 高速・明確な衝突でスリープ中の剛体＆積まれているタワー全体を一斉に起こす
+              if (impactSpd > 14 || (!A.sleeping && Math.hypot(A.vx, A.vy) > 20) || (!B.sleeping && Math.hypot(B.vx, B.vy) > 20)) {
+                if (A.sleeping) this.wakeIsland(A);
+                if (B.sleeping) this.wakeIsland(B);
+                A.sleeping = false; A.sleepFrames = 0;
+                B.sleeping = false; B.sleepFrames = 0;
+              }
+              if (ny < -0.5) B.supported = true;
+              else if (ny > 0.5) A.supported = true;
+
               const mA = MATERIALS[bestTriA.matId];
               const mB = MATERIALS[bestTriB.matId];
-              const impactSpd = -velAlongN;
               // 低速接触は反発ゼロにして静止積層を安定化
               const e = impactSpd > 58 ? Math.max(mA.restitution, mB.restitution) : 0;
 
@@ -3471,14 +3617,17 @@
         ctx.fillText(`${x}`, x - 10, GROUND_Y + 16);
       }
 
-      // 2. 第2層：六角圧力フィールドの可視化
+      // 2. 第2層：六角圧力フィールドの可視化（壁内部・地面下には描かない）
       if (state.vis.field && state.mode === 'sim') {
         for (let r = 0; r < GRID_ROWS; r++) {
           for (let c = 0; c < GRID_COLS; c++) {
-            const e = FieldEngine.energy[TriHexMath.hexIndex(r, c)];
+            const idx = TriHexMath.hexIndex(r, c);
+            if (FieldEngine.solid[idx] >= 0.72) continue;
+            const e = FieldEngine.energy[idx];
             if (e < 1.2) continue;
-            const norm = Math.min(1, e / 135);
             const ctr = TriHexMath.hexCenter(r, c);
+            if (ctr.y > GROUND_Y - 4) continue;
+            const norm = Math.min(1, e / 135);
             traceFlatHex(ctr.x, ctr.y, HEX_R - 0.5);
             const g = Math.round(215 * (1 - norm * 0.72));
             const b = Math.round(70 * (1 - norm));
@@ -5234,7 +5383,12 @@
               brokenBonds: PhysicsEngine.stats.brokenBonds,
               destroyedTris: PhysicsEngine.stats.destroyedTris,
               peakEnergy: Math.round(FieldEngine.peakEnergy * 10) / 10,
-              totalMass: Math.round(PhysicsEngine.stats.totalMass * 10) / 10
+              totalMass: Math.round(PhysicsEngine.stats.totalMass * 10) / 10,
+              leakAboveBarrel: Math.round(Math.max(
+                FieldEngine.sampleAt(140, 260),
+                FieldEngine.sampleAt(185, 260),
+                FieldEngine.sampleAt(230, 260)
+              ) * 10) / 10
             },
             bodyCount: bodies.length,
             bodies,

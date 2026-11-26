@@ -165,6 +165,17 @@ async function run() {
       );
     }
     console.log('\nイベントログ:', finalSnap.events.map(e => `[${e.t}s] ${e.msg}`).join(' / ') || 'なし');
+    // 着弾前（t=0.8s時点）のタワー静止精度＆壁上漏れチェック
+    const preHit = trace.find(f => Math.abs(f.t - 0.8) < 0.06) || trace[8];
+    let maxPreDrift = 0;
+    for (const b of preHit.bodies) {
+      const initB = init.bodies.find(x => x.id === b.id);
+      if (initB && initB.x > 700) {
+        maxPreDrift = Math.max(maxPreDrift, Math.hypot(b.x - initB.x, b.y - initB.y));
+      }
+    }
+    const maxLeakAbove = Math.max(...trace.slice(0, 12).map(f => f.stats.leakAboveBarrel || 0));
+    console.log(`着弾前(t=0.8s)タワー最大ズレ: ${maxPreDrift.toFixed(2)}px | 砲身上壁からの圧力漏れ: ${maxLeakAbove}`);
     console.log('最終統計:', JSON.stringify(finalSnap.stats));
     console.log('詳細ログ保存先:', path.join(OUT_DIR, 'tutorial_trace.json'));
   } finally {
