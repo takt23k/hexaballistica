@@ -1,0 +1,4036 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HexaBallistica — 創発物理サンドボックス v0.2 (三角形分割)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700;800&family=Noto+Sans+JP:wght@400;500;700;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-void: #060a12;
+      --bg-panel: #0d1424;
+      --accent-cyan: #22d3ee;
+      --accent-amber: #fbbf24;
+      --accent-rose: #fb7185;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      width: 100%;
+      font-family: 'Noto Sans JP', sans-serif;
+      background-color: var(--bg-void);
+      color: #e2e8f0;
+      overflow: hidden;
+    }
+
+    .font-mono-tech {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .btn-tech {
+      transition: transform 0.1s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+      box-shadow: 0 2px 0 rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.10);
+    }
+    .btn-tech:active:not(:disabled) {
+      transform: translateY(1.5px);
+      box-shadow: 0 0 0 rgba(0, 0, 0, 0.5);
+    }
+
+    .mat-chip.active {
+      border-color: #fbbf24;
+      background: linear-gradient(180deg, rgba(245, 158, 11, 0.28), rgba(245, 158, 11, 0.10));
+      box-shadow: 0 0 12px rgba(245, 158, 11, 0.28);
+    }
+    .mat-chip.active-energy {
+      border-color: #fb7185;
+      background: linear-gradient(180deg, rgba(244, 63, 94, 0.32), rgba(245, 158, 11, 0.12));
+      box-shadow: 0 0 12px rgba(244, 63, 94, 0.32);
+    }
+    .tool-chip.active {
+      border-color: #22d3ee;
+      background: rgba(6, 182, 212, 0.26);
+      color: #ecfeff;
+    }
+    .tool-chip.active-rose {
+      border-color: #fb7185;
+      background: rgba(244, 63, 94, 0.28);
+      color: #ffe4e6;
+    }
+
+    canvas {
+      display: block;
+      touch-action: none;
+    }
+
+    @keyframes hintPulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.45); }
+      50% { box-shadow: 0 0 14px 2px rgba(251, 191, 36, 0.65); }
+    }
+    .hint-pulse {
+      animation: hintPulse 2s ease-in-out infinite;
+    }
+
+    @keyframes tutRing {
+      0%, 100% { box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.9), 0 0 14px rgba(34, 211, 238, 0.55); }
+      50% { box-shadow: 0 0 0 4px rgba(251, 191, 36, 0.95), 0 0 20px rgba(251, 191, 36, 0.7); }
+    }
+    .tut-highlight {
+      animation: tutRing 1.3s ease-in-out infinite !important;
+      position: relative;
+      z-index: 5;
+    }
+
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: #0b1120; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 999px; }
+  </style>
+</head>
+<body class="h-[100dvh] w-screen overflow-hidden flex flex-col selection:bg-cyan-500/30">
+
+  <!-- ==================== スリムヘッダー ==================== -->
+  <header class="bg-slate-900/95 border-b border-slate-800 px-3 py-1.5 flex items-center justify-between gap-2 shrink-0 z-30">
+    <!-- 左：タイトル＆モード＆統一面積コスト -->
+    <div class="flex items-center gap-2 min-w-0">
+      <div class="w-7 h-7 rounded-lg bg-gradient-to-br from-cyan-400 to-indigo-600 flex items-center justify-center shadow border border-cyan-200/40 shrink-0">
+        <!-- 6分割正六角形アイコン -->
+        <svg class="w-4 h-4 text-slate-950" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="21,12 16.5,19.8 7.5,19.8 3,12 7.5,4.2 16.5,4.2" fill="rgba(15,23,42,0.16)"></polygon>
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="7.5" y1="4.2" x2="16.5" y2="19.8"></line>
+          <line x1="16.5" y1="4.2" x2="7.5" y2="19.8"></line>
+        </svg>
+      </div>
+      <h1 class="font-mono-tech font-extrabold text-sm sm:text-base tracking-wider text-cyan-300 leading-none shrink-0">HexaBallistica</h1>
+      <span id="modeBadge" class="hidden md:inline-block font-mono-tech text-[10px] font-bold px-2 py-0.5 rounded bg-cyan-500/15 text-cyan-300 border border-cyan-500/35 shrink-0">
+        DESIGN
+      </span>
+      <div id="costPill" class="font-mono-tech text-[11px] font-bold px-2 py-0.5 rounded-md bg-slate-950 border border-amber-500/35 text-amber-300 shrink-0" title="使用した物質の総面積コスト（1六角=1.00 / 1三角=0.167）">
+        コスト 0.00
+      </div>
+    </div>
+
+    <!-- 中央：創発サンプル選択 -->
+    <div class="flex-1 max-w-[270px] flex justify-center">
+      <select id="presetSelect" class="w-full bg-slate-800/95 border border-slate-700 hover:border-slate-500 rounded-lg px-2.5 py-1 text-xs font-bold text-slate-100 cursor-pointer focus:outline-none focus:border-cyan-400 truncate">
+        <option value="" disabled selected>🧪 サンプルを読み込む...</option>
+        <option value="cannon">① 平滑バレル・火薬砲</option>
+        <option value="recoilless">② 楔（くさび）弾＆無反動砲</option>
+        <option value="ricochet">③ 60°斜面バウンド跳弾砲</option>
+        <option value="rocket">④ ノズル形状・推進ロケット</option>
+        <option value="rupture">⑤ 薄肉ケーシング暴発テスト</option>
+        <option value="catapult">⑥ 平板ビーム＆三角支点投石機</option>
+      </select>
+    </div>
+
+    <!-- 右：チュートリアル・解析・設計図・ヘルプ・音 -->
+    <div class="flex items-center gap-1.5 shrink-0">
+      <button id="btnStartTutorial" class="btn-tech px-2.5 py-1 rounded-lg bg-indigo-950/90 hover:bg-indigo-900 border border-cyan-400/55 text-xs font-bold text-cyan-200 flex items-center gap-1" title="操作感を覚える5ステップ体験チュートリアル">
+        <span>🎓</span><span class="hidden sm:inline">チュートリアル</span>
+      </button>
+      <button id="btnToggleInspector" class="btn-tech px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-bold text-slate-200 flex items-center gap-1" title="解析データ・可視化設定">
+        <span>📊</span><span class="hidden md:inline">解析</span>
+      </button>
+      <button id="btnOpenBlueprints" class="btn-tech px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-bold text-cyan-300 flex items-center gap-1" title="設計図の保存・コード共有">
+        <span>💾</span><span class="hidden md:inline">設計図</span>
+      </button>
+      <button id="btnGuide" class="btn-tech w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-black text-slate-200 flex items-center justify-center" title="三角形分割と世界法則">
+        ?
+      </button>
+      <button id="btnMute" class="btn-tech w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs flex items-center justify-center" title="効果音 ON/OFF">
+        🔊
+      </button>
+    </div>
+  </header>
+
+  <!-- ==================== メインフルサイズキャンバス ==================== -->
+  <main class="flex-1 min-h-0 relative bg-[#050912] overflow-hidden">
+    <canvas id="worldCanvas" class="w-full h-full cursor-crosshair"></canvas>
+
+    <!-- 左上フローティング：現在のツール／ホバー情報 -->
+    <div class="absolute top-2.5 left-3 z-10 flex flex-col gap-1.5 pointer-events-none max-w-[74%]">
+      <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-lg bg-slate-950/85 border border-slate-700/80 backdrop-blur-sm font-mono-tech text-[11px] text-slate-200 w-fit">
+        <span id="hoverMain" class="text-cyan-300 font-bold truncate">⬡ 六角配置: クリック/ドラッグで配置（右クリック削除）</span>
+        <span id="hoverSub" class="text-slate-400 hidden sm:inline shrink-0">面積 6/6 = 1.00</span>
+      </div>
+      <!-- 接続ツール専用サブバー（🔗接続選択中のみ表示） -->
+      <div id="bondSubBar" class="hidden pointer-events-auto inline-flex items-center gap-1 p-1 rounded-lg bg-slate-950/92 border border-cyan-500/45 backdrop-blur-sm shadow-lg w-fit">
+        <button id="btnBondCut" class="px-2 py-0.5 rounded text-[11px] font-bold border border-rose-400/70 bg-rose-500/25 text-rose-200" title="境界線をなぞるか横切って切断（左ドラッグ）">✂ 切る</button>
+        <button id="btnBondJoin" class="px-2 py-0.5 rounded text-[11px] font-bold border border-slate-700 bg-slate-800 text-slate-300 hover:text-white" title="未接続の赤い境界をなぞって再結合（右ドラッグでも可）">🔗 つなぐ</button>
+        <div class="w-px h-4 bg-slate-700 mx-0.5"></div>
+        <button id="btnBondSplitMat" class="px-2 py-0.5 rounded text-[11px] font-bold border border-amber-400/50 bg-amber-500/15 hover:bg-amber-500/25 text-amber-200" title="素材が違うブロック同士の境界をワンクリックで一括分離">⚡ 異素材を一括分離</button>
+      </div>
+    </div>
+
+    <!-- 上部中央フローティング：実践型チュートリアルカード -->
+    <div id="tutorialCard" class="hidden absolute top-11 sm:top-2.5 left-1/2 -translate-x-1/2 z-20 w-[92vw] max-w-[440px] bg-slate-900/95 border border-cyan-400/65 rounded-xl shadow-2xl backdrop-blur-md p-2.5 sm:p-3 space-y-2">
+      <div class="flex items-center justify-between gap-2">
+        <div class="flex items-center gap-2 min-w-0">
+          <span id="tutStepBadge" class="font-mono-tech text-[10px] font-black px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-400/50 shrink-0">STEP 1/5</span>
+          <h2 id="tutTitle" class="font-bold text-xs sm:text-sm text-white truncate">直線ツールで平らな上壁を引く</h2>
+        </div>
+        <button id="btnExitTutorial" class="text-slate-400 hover:text-white text-xs font-bold px-1.5 py-0.5 rounded hover:bg-slate-800 shrink-0" title="チュートリアルを終了して自由設計へ">✕</button>
+      </div>
+      <div class="w-full h-1 bg-slate-800 rounded-full overflow-hidden">
+        <div id="tutProgressBar" class="h-full bg-gradient-to-r from-cyan-400 to-amber-400 transition-all duration-300" style="width: 20%"></div>
+      </div>
+      <p id="tutDesc" class="text-[11px] sm:text-xs text-slate-200 leading-relaxed"></p>
+      <div class="flex items-center justify-between gap-2 pt-0.5">
+        <span id="tutStatus" class="font-mono-tech text-[10px] text-amber-300 font-bold truncate">進捗: 0%</span>
+        <div id="tutActions" class="flex items-center gap-1.5 shrink-0">
+          <button id="btnTutSkipStep" class="px-2 py-0.5 rounded-md bg-slate-800 hover:bg-slate-700 border border-slate-700 text-[10px] font-bold text-slate-300">次へスキップ</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 右上フローティング：タイマー＆ズーム操作 -->
+    <div class="absolute top-2.5 right-3 z-10 flex items-center gap-1.5">
+      <div id="simClockPill" class="px-2.5 py-1 rounded-lg bg-slate-950/85 border border-slate-700/80 backdrop-blur-sm font-mono-tech text-[11px] text-slate-300">
+        T+ 0.00s
+      </div>
+      <div class="flex items-center bg-slate-950/85 border border-slate-700/80 rounded-lg p-0.5 backdrop-blur-sm">
+        <button id="btnZoomOut" class="w-6 h-6 rounded hover:bg-slate-800 text-slate-200 font-mono-tech font-bold text-sm leading-none" title="縮小">−</button>
+        <button id="btnZoomReset" class="px-1.5 h-6 rounded hover:bg-slate-800 text-slate-300 font-mono-tech text-[10px] font-bold" title="画面全体に戻す">100%</button>
+        <button id="btnZoomIn" class="w-6 h-6 rounded hover:bg-slate-800 text-slate-200 font-mono-tech font-bold text-sm leading-none" title="拡大">+</button>
+      </div>
+    </div>
+
+    <!-- 左下フローティング：控えめな物理観測メモ（失敗・停滞検知時のみ表示） -->
+    <div id="hintDock" class="hidden absolute bottom-3 left-3 z-20 flex flex-col items-start gap-2 max-w-[330px] sm:max-w-[370px]">
+      <div id="hintCard" class="hidden w-full bg-slate-900/95 border border-amber-400/55 rounded-xl shadow-2xl backdrop-blur p-3 space-y-2 text-xs">
+        <div class="flex items-center justify-between gap-2 border-b border-slate-800 pb-1.5">
+          <div class="flex items-center gap-1.5">
+            <span class="text-amber-300">💡</span>
+            <span class="font-mono-tech font-bold text-amber-300 text-[11px] tracking-wide">物理観測メモ</span>
+          </div>
+          <button id="btnCloseHintCard" class="text-slate-400 hover:text-white text-xs font-bold px-1" title="メモを閉じる">✕</button>
+        </div>
+        <div id="hintList" class="space-y-2 max-h-[200px] overflow-y-auto pr-0.5"></div>
+        <div class="pt-1 border-t border-slate-800 flex items-center justify-between gap-2 text-[10px]">
+          <button id="btnToggleHintPin" class="font-mono-tech px-2 py-0.5 rounded border border-amber-400/50 bg-amber-500/15 text-amber-200 font-bold hover:bg-amber-500/25">
+            📍 原因箇所マーク: ON
+          </button>
+          <span id="hintDesignNote" class="text-slate-400 truncate">設計へ戻っても位置を確認できます</span>
+        </div>
+      </div>
+
+      <button id="btnToggleHint" class="btn-tech hint-pulse px-3 py-1.5 rounded-full bg-slate-950/92 hover:bg-slate-900 border border-amber-400/65 text-amber-200 text-xs font-bold flex items-center gap-1.5 backdrop-blur-sm">
+        <span>💡</span>
+        <span id="hintPillLabel">物理観測ヒント</span>
+        <span id="hintCountBadge" class="font-mono-tech text-[10px] px-1.5 py-0.2 rounded-full bg-amber-500/25 text-amber-300 border border-amber-400/40">1</span>
+      </button>
+    </div>
+
+    <!-- 右側折りたたみドロワー：解析・可視化・イベントログ -->
+    <aside id="inspectorDrawer" class="hidden absolute top-12 right-3 bottom-3 w-[258px] max-w-[85vw] z-20 bg-slate-900/95 border border-slate-700/90 rounded-xl shadow-2xl backdrop-blur flex flex-col overflow-hidden">
+      <div class="px-3 py-2 bg-slate-950/80 border-b border-slate-800 flex items-center justify-between shrink-0">
+        <span class="font-mono-tech text-xs font-bold text-amber-400">解析 ＆ 可視化</span>
+        <button id="btnCloseInspector" class="text-slate-400 hover:text-white text-xs font-bold px-1">✕</button>
+      </div>
+
+      <div class="p-2.5 space-y-3 flex-1 min-h-0 overflow-y-auto text-xs">
+        <div>
+          <div class="text-[10px] font-mono-tech text-slate-400 mb-1.5">表示レイヤー</div>
+          <div class="flex flex-wrap gap-1">
+            <button data-vis="field" class="vis-btn px-2 py-1 rounded text-[11px] font-bold border border-orange-400/60 bg-orange-500/20 text-orange-200">🔥圧力場(六角)</button>
+            <button data-vis="bonds" class="vis-btn px-2 py-1 rounded text-[11px] font-bold border border-cyan-400/60 bg-cyan-500/20 text-cyan-200">🔗接続/境界</button>
+            <button data-vis="mesh" class="vis-btn px-2 py-1 rounded text-[11px] font-bold border border-slate-700 bg-slate-800 text-slate-400">△分割線</button>
+            <button data-vis="velocity" class="vis-btn px-2 py-1 rounded text-[11px] font-bold border border-slate-700 bg-slate-800 text-slate-400">↗移動方向</button>
+            <button data-vis="damage" class="vis-btn px-2 py-1 rounded text-[11px] font-bold border border-rose-400/60 bg-rose-500/20 text-rose-200">💥損傷</button>
+            <button data-vis="contacts" class="vis-btn px-2 py-1 rounded text-[11px] font-bold border border-amber-400/60 bg-amber-500/20 text-amber-200">✦衝突</button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-1.5 font-mono-tech">
+          <div class="bg-slate-950/80 border border-slate-800 rounded-lg px-2 py-1.5">
+            <div class="text-[9px] text-slate-400">物質量(面積)</div>
+            <div id="statArea" class="font-bold text-amber-300">0.00 ⬡</div>
+          </div>
+          <div class="bg-slate-950/80 border border-slate-800 rounded-lg px-2 py-1.5">
+            <div class="text-[9px] text-slate-400">統一コスト</div>
+            <div id="statCost" class="font-bold text-emerald-300">0.00</div>
+          </div>
+          <div class="bg-slate-950/80 border border-slate-800 rounded-lg px-2 py-1.5">
+            <div class="text-[9px] text-slate-400">独立剛体 / △数</div>
+            <div id="statBodies" class="font-bold text-cyan-300">0 / 0△</div>
+          </div>
+          <div class="bg-slate-950/80 border border-slate-800 rounded-lg px-2 py-1.5">
+            <div class="text-[9px] text-slate-400">総質量</div>
+            <div id="statMass" class="font-bold text-slate-100">0.0 kg</div>
+          </div>
+          <div class="bg-slate-950/80 border border-slate-800 rounded-lg px-2 py-1.5">
+            <div class="text-[9px] text-slate-400">破断 / 破壊△</div>
+            <div id="statDamageCount" class="font-bold text-rose-400">0 / 0</div>
+          </div>
+          <div class="bg-slate-950/80 border border-slate-800 rounded-lg px-2 py-1.5">
+            <div class="text-[9px] text-slate-400">最高速 / 場Peak</div>
+            <div id="statSpeedPeak" class="font-bold text-orange-300">0 / 0.0</div>
+          </div>
+        </div>
+
+        <div id="selectedSpecCard" class="p-2 rounded-lg bg-slate-950/85 border border-slate-800 space-y-1 text-[10px] font-mono-tech"></div>
+
+        <div class="bg-slate-950/80 border border-slate-800 rounded-lg p-2 space-y-1">
+          <div class="flex items-center justify-between">
+            <span class="font-mono-tech text-[10px] font-bold text-slate-400">EVENT LOG</span>
+            <button id="btnClearLog" class="text-[10px] text-slate-500 hover:text-slate-200">消去</button>
+          </div>
+          <div id="eventLog" class="space-y-0.5 max-h-[115px] overflow-y-auto font-mono-tech text-[10px] text-slate-300">
+            <div class="text-slate-500">待機中</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <!-- ==================== 下部スッキリ操作ドック（モード連動） ==================== -->
+  <footer class="bg-slate-900/95 border-t border-slate-800 px-2.5 sm:px-3 py-2 shrink-0 z-30">
+    <!-- 設計モード用ドック -->
+    <div id="dockDesign" class="max-w-[1480px] mx-auto flex flex-wrap items-center justify-between gap-2">
+      <!-- 6種の基本物質・エネルギー素材 -->
+      <div id="elementChips" class="flex items-center gap-1 overflow-x-auto py-0.5"></div>
+
+      <!-- 形状編集＆描画ツールバー -->
+      <div class="flex items-center gap-1.5 flex-wrap">
+        <div class="flex items-center bg-slate-950 p-0.5 rounded-lg border border-slate-800 gap-0.5">
+          <button id="btnToolHex" class="tool-chip active px-2 py-1.5 rounded-md text-xs font-bold border border-transparent" title="標準配置：六角形まるごと(6/6 = コスト1.00)を配置">⬡ 六角</button>
+          <button id="btnToolTri" class="tool-chip px-2 py-1.5 rounded-md text-xs font-bold border border-transparent text-amber-200" title="形状編集：1/6の正三角形(コスト0.167)単位で配置・造形">△ 三角</button>
+          <button id="btnToolLine" class="tool-chip px-2 py-1.5 rounded-md text-xs font-bold border border-transparent text-emerald-300" title="直線描画：ドラッグで平滑な水平壁・60°斜面を一気に描画">╱ 直線</button>
+          <button id="btnToolCarve" class="tool-chip px-2 py-1.5 rounded-md text-xs font-bold border border-transparent text-rose-300" title="切断・削り：三角形単位で物質を削る・くり抜く">✂ 削り</button>
+          <button id="btnToolBond" class="tool-chip px-2 py-1.5 rounded-md text-xs font-bold border border-transparent text-cyan-300" title="接続切替：共有辺をクリックまたはドラッグ横断して分離/結合">🔗 接続</button>
+        </div>
+
+        <button id="btnAutoBond" class="btn-tech px-2 py-1.5 rounded-lg border border-emerald-500/50 bg-emerald-950/40 text-emerald-300 text-xs font-bold" title="OFFにして配置すると既存構造と切り離された独立剛体（砲弾・可動部品）になる">
+          自動接続: ON
+        </button>
+
+        <button id="btnUndo" class="btn-tech px-2 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-bold text-slate-200" title="1つ戻す">↩</button>
+        <button id="btnClear" class="btn-tech px-2 py-1.5 rounded-lg bg-slate-800 hover:bg-rose-900/60 border border-slate-700 text-xs font-bold text-rose-300" title="全消去">🗑</button>
+      </div>
+
+      <!-- 実行アクション -->
+      <div class="flex items-center gap-1.5 ml-auto sm:ml-0">
+        <button id="btnAutoIgnite" class="btn-tech px-2 py-1.5 rounded-lg border border-amber-500/45 bg-amber-500/15 text-amber-300 text-xs font-bold" title="実行開始時に火薬・推進剤を自動点火">
+          ⚡自動点火
+        </button>
+        <button id="btnStartSim" class="btn-tech px-4 py-1.5 rounded-lg bg-gradient-to-r from-emerald-400 to-cyan-400 hover:from-emerald-300 hover:to-cyan-300 text-slate-950 font-black text-xs sm:text-sm tracking-wide">
+          ▶ 実行
+        </button>
+      </div>
+    </div>
+
+    <!-- シミュレーション中用ドック -->
+    <div id="dockSim" class="hidden max-w-[1480px] mx-auto flex flex-wrap items-center justify-between gap-2">
+      <div class="flex items-center gap-1.5 flex-wrap">
+        <button id="btnBackToDesign" class="btn-tech px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-cyan-500/50 text-cyan-200 font-bold text-xs sm:text-sm">
+          ← 設計へ戻る
+        </button>
+        <button id="btnRestartSim" class="btn-tech px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs sm:text-sm">
+          ↺ 再実行
+        </button>
+        <button id="btnTriggerEnergy" class="btn-tech px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-rose-500 to-orange-500 hover:from-rose-400 hover:to-orange-400 text-white font-black text-xs sm:text-sm">
+          ⚡ 点火 (SPACE)
+        </button>
+      </div>
+
+      <div class="flex items-center bg-slate-950 rounded-lg p-0.5 border border-slate-800 gap-1">
+        <button id="btnPause" class="px-2.5 py-1 rounded-md text-xs font-mono-tech font-bold bg-slate-800 hover:bg-slate-700 text-slate-100" title="一時停止">⏸</button>
+        <button id="btnStep" class="px-2.5 py-1 rounded-md text-xs font-mono-tech font-bold bg-slate-800 hover:bg-slate-700 text-slate-100" title="1フレーム送り">⏭1F</button>
+        <button data-speed="0.2" class="speed-btn px-2 py-1 rounded-md text-xs font-mono-tech font-bold bg-slate-800 text-slate-400 hover:text-white">0.2x</button>
+        <button data-speed="0.5" class="speed-btn px-2 py-1 rounded-md text-xs font-mono-tech font-bold bg-slate-800 text-slate-400 hover:text-white">0.5x</button>
+        <button data-speed="1" class="speed-btn px-2 py-1 rounded-md text-xs font-mono-tech font-bold bg-cyan-500 text-slate-950">1x</button>
+      </div>
+
+      <div class="hidden md:flex items-center gap-1">
+        <button data-vis="field" class="vis-btn px-2 py-1 rounded-md text-xs font-bold border border-orange-400/60 bg-orange-500/20 text-orange-200">🔥場</button>
+        <button data-vis="bonds" class="vis-btn px-2 py-1 rounded-md text-xs font-bold border border-cyan-400/60 bg-cyan-500/20 text-cyan-200">🔗接続</button>
+        <button data-vis="mesh" class="vis-btn px-2 py-1 rounded-md text-xs font-bold border border-slate-700 bg-slate-800 text-slate-400">△分割</button>
+        <button data-vis="velocity" class="vis-btn px-2 py-1 rounded-md text-xs font-bold border border-slate-700 bg-slate-800 text-slate-400">↗速度</button>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ==================== トースト通知 ==================== -->
+  <div id="toastContainer" class="fixed top-14 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-1.5 pointer-events-none"></div>
+
+  <!-- ==================== ブループリント管理＆コード共有モーダル ==================== -->
+  <div id="bpModal" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-3">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-lg w-full max-h-[86vh] flex flex-col shadow-2xl overflow-hidden">
+      <div class="px-4 py-3 border-b border-slate-800 flex items-center justify-between bg-slate-950/70">
+        <h3 class="font-bold text-sm text-cyan-300">💾 ブループリント保存 ＆ コード共有</h3>
+        <button id="btnCloseBpModal" class="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold">✕</button>
+      </div>
+      <div class="p-4 overflow-y-auto space-y-4 text-xs">
+        <div class="space-y-2">
+          <div class="font-bold text-slate-300">現在の設計図をブラウザに保存</div>
+          <div class="flex gap-1.5">
+            <input id="bpNameInput" type="text" maxlength="20" value="平滑バレル・火薬砲" class="flex-1 bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-bold text-white focus:outline-none focus:border-cyan-400">
+            <button id="btnSaveBp" class="btn-tech px-4 py-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black">保存</button>
+          </div>
+          <div id="bpSlotList" class="space-y-1.5 pt-1"></div>
+        </div>
+        <div class="pt-3 border-t border-slate-800 space-y-2">
+          <div class="font-bold text-slate-300">文字列コードで共有 / 読込</div>
+          <textarea id="shareCodeText" rows="3" class="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 font-mono-tech text-[11px] text-amber-300 focus:outline-none focus:border-cyan-400"></textarea>
+          <div class="flex gap-2">
+            <button id="btnCopyCode" class="btn-tech flex-1 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-600 text-cyan-300 font-bold">コードをコピー</button>
+            <button id="btnImportCode" class="btn-tech flex-1 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-black">このコードを読込</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== 三角形分割＆物理法則ガイドモーダル ==================== -->
+  <div id="guideModal" class="hidden fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-3">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-lg w-full max-h-[86vh] flex flex-col shadow-2xl overflow-hidden">
+      <div class="px-4 py-3 border-b border-slate-800 flex items-center justify-between bg-slate-950/70">
+        <h3 class="font-bold text-sm text-cyan-300">HexaBallistica v0.2 — 三角形分割と物理法則</h3>
+        <button id="btnCloseGuide" class="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold">✕</button>
+      </div>
+      <div class="p-4 overflow-y-auto space-y-3 text-xs text-slate-300 leading-relaxed">
+        <div class="bg-slate-800/60 p-3 rounded-xl border border-slate-700">
+          <h4 class="font-bold text-amber-300 mb-1">1. 正六角形を6つの正三角形に分割して造形する</h4>
+          アイテムを増やすのではなく、<strong>同じ物質を正三角形（1/6）単位で自由に造形</strong>します。<br>
+          ・<strong>⬡ 六角</strong>：通常の配置単位（面積 6/6 = コスト 1.00）<br>
+          ・<strong>△ 三角</strong>：先端を尖らせたり、台形・ひし形・薄肉壁を作成（1/6 = 0.167）<br>
+          ・<strong>╱ 直線</strong>：ドラッグで<strong>凹凸のない平坦な水平壁・60°斜面</strong>を一気に描画<br>
+          ・<strong>✂ 削り</strong>：物質の一部を削って砲身内壁をくり抜く
+        </div>
+        <div class="bg-slate-800/60 p-3 rounded-xl border border-slate-700">
+          <h4 class="font-bold text-cyan-300 mb-1">2. 内部計算の分離（六角フィールド × 結合輪郭物理）</h4>
+          ・<strong>圧力フィールド</strong>：正六角形グリッドで等方伝播（三角形の面ごとに漏れを遮蔽）<br>
+          ・<strong>火薬＆推進剤</strong>：火薬は起爆後に高圧を放出して消滅し薬室を空洞化。推進剤は連続燃焼します。<br>
+          ・<strong>🔗 接続ツール</strong>：ナイフのように境界を横切る／なぞるだけで独立した弾丸や可動部品に切り離せます。
+        </div>
+        <div class="bg-slate-800/60 p-3 rounded-xl border border-slate-700">
+          <h4 class="font-bold text-emerald-300 mb-1">3. カメラ＆操作ショートカット</h4>
+          ・<strong>右クリック / ドラッグ</strong>：素早く消去（🔗接続モード中は再結合）<br>
+          ・<strong>ホイール / 右上 [+][-]</strong>：最大 2.8x 拡大縮小<br>
+          ・<strong>中ボタンドラッグ（または Shift＋ドラッグ）</strong>：画面パン移動<br>
+          ・<strong>SPACE</strong>：実行 / 点火
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== メインスクリプト（独立モジュール構成） ==================== -->
+  <script>
+  (() => {
+    'use strict';
+
+    // =========================================================================
+    // MODULE 1: TriHexMath — フラットトップ正六角形 × 6正三角形分割グリッド
+    //   水平直線（0°）と60°・120°直線が100%凹凸なく表現できる三角格子
+    // =========================================================================
+    const WORLD_W = 1040;
+    const WORLD_H = 520;
+    const GROUND_Y = 486;
+
+    const HEX_R = 30;                                 // 六角形外接円半径
+    const HEX_H = HEX_R * Math.sqrt(3) / 2;           // 正三角形の高さ ≈ 25.9808
+    const HEX_DX = 1.5 * HEX_R;                       // 列間隔 = 45
+    const HEX_DY = 2 * HEX_H;                         // 行間隔 ≈ 51.9615
+
+    const GRID_COLS = 22;
+    const GRID_ROWS = 9;
+    const GRID_OX = 47;
+    const GRID_OY = GROUND_Y - 8 * HEX_DY;            // ≈ 70.3078
+
+    // フラットトップ六角形の6頂点オフセット（k=0..5, 角度 k*60°, +x右, +y下）
+    const HEX_VERTS = Array.from({ length: 6 }, (_, k) => {
+      const a = (Math.PI / 3) * k;
+      return { x: Math.cos(a) * HEX_R, y: Math.sin(a) * HEX_R };
+    });
+
+    // 各三角 t=0..5 の外周辺(V[t]->V[t+1])の外向き単位法線
+    const DIR_VECS = Array.from({ length: 6 }, (_, d) => {
+      const a = (d + 0.5) * (Math.PI / 3);
+      return { x: Math.cos(a), y: Math.sin(a) };
+    });
+
+    // odd-q（奇数列を +HEX_H 下にシフト）の6近傍オフセット [dr, dc]
+    const EVEN_COL_DIRS = [[0, 1], [1, 0], [0, -1], [-1, -1], [-1, 0], [-1, 1]];
+    const ODD_COL_DIRS  = [[1, 1], [1, 0], [1, -1], [0, -1],  [-1, 0], [0, 1]];
+
+    const TriHexMath = {
+      hexInBounds(r, c) {
+        return r >= 0 && r < GRID_ROWS && c >= 0 && c < GRID_COLS;
+      },
+      hexIndex(r, c) {
+        return r * GRID_COLS + c;
+      },
+      hexCenter(r, c) {
+        return {
+          x: GRID_OX + c * HEX_DX,
+          y: GRID_OY + r * HEX_DY + ((c & 1) ? HEX_H : 0)
+        };
+      },
+      triVertices(r, c, t) {
+        const ctr = this.hexCenter(r, c);
+        const v1 = HEX_VERTS[t];
+        const v2 = HEX_VERTS[(t + 1) % 6];
+        return [
+          { x: ctr.x, y: ctr.y },
+          { x: ctr.x + v1.x, y: ctr.y + v1.y },
+          { x: ctr.x + v2.x, y: ctr.y + v2.y }
+        ];
+      },
+      triCentroid(r, c, t) {
+        const ctr = this.hexCenter(r, c);
+        const v1 = HEX_VERTS[t];
+        const v2 = HEX_VERTS[(t + 1) % 6];
+        return {
+          x: ctr.x + (v1.x + v2.x) / 3,
+          y: ctr.y + (v1.y + v2.y) / 3
+        };
+      },
+      triValid(r, c, t) {
+        if (!this.hexInBounds(r, c) || t < 0 || t > 5) return false;
+        const cent = this.triCentroid(r, c, t);
+        return cent.y < GROUND_Y - 0.5 && cent.y > 10 && cent.x > 8 && cent.x < WORLD_W - 8;
+      },
+      worldToHex(wx, wy) {
+        const approxC = Math.round((wx - GRID_OX) / HEX_DX);
+        let bestR = -1, bestC = -1, bestD2 = Infinity;
+        for (let c = approxC - 1; c <= approxC + 1; c++) {
+          if (c < 0 || c >= GRID_COLS) continue;
+          const yOff = (c & 1) ? HEX_H : 0;
+          const approxR = Math.round((wy - GRID_OY - yOff) / HEX_DY);
+          for (let r = approxR - 1; r <= approxR + 1; r++) {
+            if (r < 0 || r >= GRID_ROWS) continue;
+            const pt = this.hexCenter(r, c);
+            const d2 = (wx - pt.x) ** 2 + (wy - pt.y) ** 2;
+            if (d2 < bestD2) {
+              bestD2 = d2;
+              bestR = r;
+              bestC = c;
+            }
+          }
+        }
+        if (bestD2 <= HEX_R * HEX_R * 1.04) return { r: bestR, c: bestC };
+        return null;
+      },
+      worldToTri(wx, wy) {
+        const hex = this.worldToHex(wx, wy);
+        if (!hex) return null;
+        const ctr = this.hexCenter(hex.r, hex.c);
+        let ang = Math.atan2(wy - ctr.y, wx - ctr.x);
+        if (ang < 0) ang += Math.PI * 2;
+        const t = Math.floor(ang / (Math.PI / 3)) % 6;
+        if (!this.triValid(hex.r, hex.c, t)) return null;
+        return { r: hex.r, c: hex.c, t };
+      },
+      hexNeighbors(r, c) {
+        const dirs = (c & 1) ? ODD_COL_DIRS : EVEN_COL_DIRS;
+        const out = [];
+        for (let d = 0; d < 6; d++) {
+          const nr = r + dirs[d][0];
+          const nc = c + dirs[d][1];
+          out.push({ r: nr, c: nc, dir: d, valid: this.hexInBounds(nr, nc) });
+        }
+        return out;
+      },
+      triNeighbors(r, c, t) {
+        const dirs = (c & 1) ? ODD_COL_DIRS : EVEN_COL_DIRS;
+        const er = r + dirs[t][0];
+        const ec = c + dirs[t][1];
+        const et = (t + 3) % 6;
+        return [
+          { r, c, t: (t + 5) % 6, edgeIdx: 0, valid: this.triValid(r, c, (t + 5) % 6) },
+          { r: er, c: ec, t: et,  edgeIdx: 1, valid: this.triValid(er, ec, et) },
+          { r, c, t: (t + 1) % 6, edgeIdx: 2, valid: this.triValid(r, c, (t + 1) % 6) }
+        ];
+      },
+      triKey(r, c, t) {
+        return `${r},${c},${t}`;
+      },
+      bondKey(r1, c1, t1, r2, c2, t2) {
+        const a = `${r1},${c1},${t1}`;
+        const b = `${r2},${c2},${t2}`;
+        return a < b ? `${a}|${b}` : `${b}|${a}`;
+      },
+      triEdgeSegment(r, c, t, edgeIdx) {
+        const v = this.triVertices(r, c, t);
+        const p1 = v[edgeIdx];
+        const p2 = v[(edgeIdx + 1) % 3];
+        return { p1, p2, mx: (p1.x + p2.x) * 0.5, my: (p1.y + p2.y) * 0.5 };
+      }
+    };
+
+    // =========================================================================
+    // MODULE 2: MaterialDB — 少数の基本物質＋火薬・推進剤（統一面積コスト）
+    // =========================================================================
+    const MATERIALS = {
+      dense: {
+        id: 'dense', kind: 'matter', short: '重質', name: '重質材',
+        density: 4.2, durability: 205, friction: 0.48, restitution: 0.14, unitCost: 1.00,
+        color: '#334155', accent: '#94a3b8', line: '#64748b',
+        desc: '高密度・高耐久。平滑な砲身壁・重り・貫通弾に'
+      },
+      light: {
+        id: 'light', kind: 'matter', short: '軽質', name: '軽質材',
+        density: 1.0, durability: 48, friction: 0.62, restitution: 0.26, unitCost: 1.00,
+        color: '#854d0e', accent: '#facc15', line: '#ca8a04',
+        desc: '軽量・脆い。飛翔体・平板ビーム・破壊標的に'
+      },
+      elastic: {
+        id: 'elastic', kind: 'matter', short: '弾性', name: '弾性材',
+        density: 1.8, durability: 115, friction: 0.16, restitution: 0.94, unitCost: 1.00,
+        color: '#0f766e', accent: '#2dd4bf', line: '#14b8a6',
+        desc: '高反発。60°反射斜面・跳弾ブロック・クッションに'
+      },
+      slick: {
+        id: 'slick', kind: 'matter', short: '滑性', name: '滑性材',
+        density: 2.2, durability: 135, friction: 0.02, restitution: 0.18, unitCost: 1.00,
+        color: '#1d4ed8', accent: '#93c5fd', line: '#3b82f6',
+        desc: '極低摩擦。高速滑走弾・楔弾・ガイドレールに'
+      },
+      energy_pulse: {
+        id: 'energy_pulse', kind: 'energy', short: '火薬', name: '火薬',
+        density: 1.6, durability: 130, friction: 0.45, restitution: 0.20, unitCost: 1.50,
+        energyPool: 100, releaseRate: 1200, fieldGain: 2.35, consumeOnDetonate: true,
+        color: '#9f1239', accent: '#fb7185', line: '#e11d48',
+        desc: '起爆すると瞬間的に高圧を発生させ消滅する'
+      },
+      energy_sustained: {
+        id: 'energy_sustained', kind: 'energy', short: '推進剤', name: '推進剤',
+        density: 1.4, durability: 120, friction: 0.45, restitution: 0.20, unitCost: 1.50,
+        energyPool: 100, releaseRate: 34, fieldGain: 0.48, consumeOnDetonate: false,
+        color: '#9a3412', accent: '#fb923c', line: '#ea580c',
+        desc: '約3秒間連続燃焼しノズル形状に応じた推力を生成'
+      }
+    };
+
+    // =========================================================================
+    // MODULE 3: SoundFX — 外部音源不要の Web Audio API シンセサイザー
+    // =========================================================================
+    const SoundFX = {
+      ctx: null,
+      muted: false,
+      init() {
+        if (!this.ctx) {
+          const AC = window.AudioContext || window.webkitAudioContext;
+          if (AC) this.ctx = new AC();
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume().catch(() => {});
+        }
+      },
+      click(freq = 520, dur = 0.04) {
+        if (this.muted) return;
+        try {
+          this.init();
+          if (!this.ctx) return;
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const g = this.ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(freq, now);
+          osc.frequency.exponentialRampToValueAtTime(freq * 0.65, now + dur);
+          g.gain.setValueAtTime(0.05, now);
+          g.gain.exponentialRampToValueAtTime(0.001, now + dur + 0.01);
+          osc.connect(g);
+          g.connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + dur + 0.015);
+        } catch (e) {}
+      },
+      slice(isCut = true) {
+        if (this.muted) return;
+        try {
+          this.init();
+          if (!this.ctx) return;
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const g = this.ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(isCut ? 860 : 420, now);
+          osc.frequency.exponentialRampToValueAtTime(isCut ? 300 : 780, now + 0.055);
+          g.gain.setValueAtTime(0.06, now);
+          g.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+          osc.connect(g);
+          g.connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.065);
+        } catch (e) {}
+      },
+      energyPulse(power = 1.0) {
+        if (this.muted) return;
+        try {
+          this.init();
+          if (!this.ctx) return;
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const g = this.ctx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(160 * power, now);
+          osc.frequency.exponentialRampToValueAtTime(36, now + 0.22);
+          g.gain.setValueAtTime(Math.min(0.22, 0.12 * power), now);
+          g.gain.exponentialRampToValueAtTime(0.001, now + 0.24);
+          osc.connect(g);
+          g.connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.25);
+
+          // 爆発ノイズ
+          const len = Math.floor(this.ctx.sampleRate * 0.14);
+          const buf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
+          const data = buf.getChannelData(0);
+          for (let i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (len * 0.35));
+          const src = this.ctx.createBufferSource();
+          src.buffer = buf;
+          const filt = this.ctx.createBiquadFilter();
+          filt.type = 'lowpass';
+          filt.frequency.setValueAtTime(1100, now);
+          const ng = this.ctx.createGain();
+          ng.gain.setValueAtTime(Math.min(0.18, 0.1 * power), now);
+          ng.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+          src.connect(filt);
+          filt.connect(ng);
+          ng.connect(this.ctx.destination);
+          src.start(now);
+        } catch (e) {}
+      },
+      impact(intensity = 0.5) {
+        if (this.muted || intensity < 0.15) return;
+        try {
+          this.init();
+          if (!this.ctx) return;
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const g = this.ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(190 + intensity * 130, now);
+          osc.frequency.exponentialRampToValueAtTime(52, now + 0.08);
+          g.gain.setValueAtTime(Math.min(0.14, intensity * 0.11), now);
+          g.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+          osc.connect(g);
+          g.connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.095);
+        } catch (e) {}
+      },
+      fracture() {
+        if (this.muted) return;
+        try {
+          this.init();
+          if (!this.ctx) return;
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const g = this.ctx.createGain();
+          osc.type = 'square';
+          osc.frequency.setValueAtTime(340, now);
+          osc.frequency.exponentialRampToValueAtTime(65, now + 0.14);
+          g.gain.setValueAtTime(0.11, now);
+          g.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+          osc.connect(g);
+          g.connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.16);
+        } catch (e) {}
+      },
+      chime() {
+        if (this.muted) return;
+        try {
+          this.init();
+          if (!this.ctx) return;
+          const now = this.ctx.currentTime;
+          [523.25, 659.25, 783.99].forEach((f, idx) => {
+            const osc = this.ctx.createOscillator();
+            const g = this.ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(f, now + idx * 0.07);
+            g.gain.setValueAtTime(0.07, now + idx * 0.07);
+            g.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.07 + 0.22);
+            osc.connect(g);
+            g.connect(this.ctx.destination);
+            osc.start(now + idx * 0.07);
+            osc.stop(now + idx * 0.07 + 0.24);
+          });
+        } catch (e) {}
+      }
+    };
+
+    // =========================================================================
+    // MODULE 4: FieldEngine (第2層：正六角形圧力フィールド)
+    //   圧力計算は正六角形グリッドで行い、三角形の占有面で流出を遮蔽
+    // =========================================================================
+    const TOTAL_HEX = GRID_ROWS * GRID_COLS;
+    const FieldEngine = {
+      energy: new Float32Array(TOTAL_HEX),
+      nextEnergy: new Float32Array(TOTAL_HEX),
+      solid: new Float32Array(TOTAL_HEX),         // 0..1 セル内の物質占有率
+      edgeBlock: new Float32Array(TOTAL_HEX * 6), // 0..1 各6方向への遮蔽率
+      peakEnergy: 0,
+
+      reset() {
+        this.energy.fill(0);
+        this.nextEnergy.fill(0);
+        this.solid.fill(0);
+        this.edgeBlock.fill(0);
+        this.peakEnergy = 0;
+      },
+
+      rasterizeBodies(bodies) {
+        this.solid.fill(0);
+        this.edgeBlock.fill(0);
+        for (const body of bodies) {
+          for (const tri of body.tris) {
+            if (tri.hp <= 0 || tri.consumed) continue;
+            const mat = MATERIALS[tri.matId];
+            if (mat.kind === 'energy') continue; // 火薬・推進剤自体はガスを通す
+            const hex = TriHexMath.worldToHex(tri.wx, tri.wy);
+            if (!hex) continue;
+            const idx = TriHexMath.hexIndex(hex.r, hex.c);
+            this.solid[idx] = Math.min(1.0, this.solid[idx] + 0.26);
+
+            // 三角形の重心が向く側の方向辺を遮蔽する
+            const ctr = TriHexMath.hexCenter(hex.r, hex.c);
+            let ang = Math.atan2(tri.wy - ctr.y, tri.wx - ctr.x);
+            if (ang < 0) ang += Math.PI * 2;
+            const d = Math.floor(ang / (Math.PI / 3)) % 6;
+            const bBase = idx * 6;
+            const weight = mat.density > 2.5 ? 0.96 : 0.84;
+            this.edgeBlock[bBase + d] = Math.max(this.edgeBlock[bBase + d], weight);
+            this.edgeBlock[bBase + ((d + 5) % 6)] = Math.max(this.edgeBlock[bBase + ((d + 5) % 6)], weight * 0.45);
+            this.edgeBlock[bBase + ((d + 1) % 6)] = Math.max(this.edgeBlock[bBase + ((d + 1) % 6)], weight * 0.45);
+          }
+        }
+      },
+
+      inject(wx, wy, amount) {
+        const hex = TriHexMath.worldToHex(wx, wy);
+        if (!hex) return;
+        const idx = TriHexMath.hexIndex(hex.r, hex.c);
+        this.energy[idx] = Math.min(480, this.energy[idx] + amount);
+      },
+
+      step(dt) {
+        const diffRate = 11.5;
+        let peak = 0;
+        for (let r = 0; r < GRID_ROWS; r++) {
+          for (let c = 0; c < GRID_COLS; c++) {
+            const idx = TriHexMath.hexIndex(r, c);
+            const eCur = this.energy[idx];
+            if (eCur < 0.005) {
+              this.nextEnergy[idx] = 0;
+              continue;
+            }
+            const nbs = TriHexMath.hexNeighbors(r, c);
+            let netFlow = 0;
+            const mySol = this.solid[idx];
+            for (let d = 0; d < 6; d++) {
+              const nb = nbs[d];
+              const myBlock = this.edgeBlock[idx * 6 + d];
+              if (!nb.valid) {
+                // 地面や画面端
+                const ctr = TriHexMath.hexCenter(r, c);
+                const isFloor = (d === 1 || d === 0 || d === 2) && ctr.y > GROUND_Y - HEX_H * 1.4;
+                if (!isFloor) {
+                  const openFactor = (1 - myBlock) * (1 - mySol * 0.6);
+                  netFlow -= eCur * openFactor * 0.35;
+                }
+                continue;
+              }
+              const nIdx = TriHexMath.hexIndex(nb.r, nb.c);
+              const oppD = (d + 3) % 6;
+              const nbBlock = this.edgeBlock[nIdx * 6 + oppD];
+              const nbSol = this.solid[nIdx];
+              const block = Math.max(myBlock, nbBlock, Math.min(mySol, nbSol) * 0.85);
+              const cond = Math.max(0.02, 1.0 - block * 0.94);
+              netFlow += (this.energy[nIdx] - eCur) * cond;
+            }
+
+            const decay = Math.exp(-(1.35 + (1 - mySol) * 0.55) * dt);
+            const val = Math.max(0, (eCur + netFlow * diffRate * dt * 0.25) * decay);
+            this.nextEnergy[idx] = val;
+            if (val > peak) peak = val;
+          }
+        }
+        const tmp = this.energy;
+        this.energy = this.nextEnergy;
+        this.nextEnergy = tmp;
+        this.peakEnergy = peak;
+      },
+
+      sampleAt(wx, wy) {
+        if (wy >= GROUND_Y) return 0;
+        const hex = TriHexMath.worldToHex(wx, wy);
+        if (!hex) return 0;
+        const idx = TriHexMath.hexIndex(hex.r, hex.c);
+        // 周辺セルとの距離重み付き補間で滑らかな圧力値を得る
+        const ctr = TriHexMath.hexCenter(hex.r, hex.c);
+        let sum = this.energy[idx] * 1.6;
+        let wSum = 1.6;
+        const nbs = TriHexMath.hexNeighbors(hex.r, hex.c);
+        for (let d = 0; d < 6; d++) {
+          const nb = nbs[d];
+          if (!nb.valid) continue;
+          const nCtr = TriHexMath.hexCenter(nb.r, nb.c);
+          const dist = Math.hypot(wx - nCtr.x, wy - nCtr.y);
+          if (dist < HEX_DY * 1.15) {
+            const w = Math.max(0, 1 - dist / (HEX_DY * 1.15));
+            sum += this.energy[TriHexMath.hexIndex(nb.r, nb.c)] * w;
+            wSum += w;
+          }
+        }
+        return sum / wSum;
+      }
+    };
+
+    // =========================================================================
+    // MODULE 5: Geometry / SAT 2D 衝突ユーティリティ
+    // =========================================================================
+    function projectTri(verts, ax, ay) {
+      let min = verts[0].x * ax + verts[0].y * ay;
+      let max = min;
+      for (let i = 1; i < 3; i++) {
+        const p = verts[i].x * ax + verts[i].y * ay;
+        if (p < min) min = p;
+        if (p > max) max = p;
+      }
+      return { min, max };
+    }
+
+    function satTriangleCollision(vA, vB) {
+      let minOverlap = Infinity;
+      let bestNx = 0, bestNy = 0;
+
+      const testEdges = (verts) => {
+        for (let i = 0; i < 3; i++) {
+          const p1 = verts[i];
+          const p2 = verts[(i + 1) % 3];
+          const ex = p2.x - p1.x;
+          const ey = p2.y - p1.y;
+          const len = Math.hypot(ex, ey);
+          if (len < 1e-6) continue;
+          const nx = -ey / len;
+          const ny = ex / len;
+          const prA = projectTri(vA, nx, ny);
+          const prB = projectTri(vB, nx, ny);
+          const overlap = Math.min(prA.max, prB.max) - Math.max(prA.min, prB.min);
+          if (overlap <= 0) return false;
+          if (overlap < minOverlap) {
+            minOverlap = overlap;
+            bestNx = nx;
+            bestNy = ny;
+          }
+        }
+        return true;
+      };
+
+      if (!testEdges(vA) || !testEdges(vB)) return null;
+
+      // 法線向きを A -> B へ統一
+      const cAx = (vA[0].x + vA[1].x + vA[2].x) / 3;
+      const cAy = (vA[0].y + vA[1].y + vA[2].y) / 3;
+      const cBx = (vB[0].x + vB[1].x + vB[2].x) / 3;
+      const cBy = (vB[0].y + vB[1].y + vB[2].y) / 3;
+      if ((cBx - cAx) * bestNx + (cBy - cAy) * bestNy < 0) {
+        bestNx = -bestNx;
+        bestNy = -bestNy;
+      }
+
+      // 接触点近似（Aの最も深い頂点とBの最も深い頂点の中間）
+      let deepA = vA[0], maxA = -Infinity;
+      for (const p of vA) {
+        const d = p.x * bestNx + p.y * bestNy;
+        if (d > maxA) { maxA = d; deepA = p; }
+      }
+      let deepB = vB[0], minB = Infinity;
+      for (const p of vB) {
+        const d = p.x * bestNx + p.y * bestNy;
+        if (d < minB) { minB = d; deepB = p; }
+      }
+      return {
+        nx: bestNx,
+        ny: bestNy,
+        depth: minOverlap,
+        px: (deepA.x + deepB.x) * 0.5,
+        py: (deepA.y + deepB.y) * 0.5
+      };
+    }
+
+    function distToSegment(px, py, x1, y1, x2, y2) {
+      const dx = x2 - x1, dy = y2 - y1;
+      const len2 = dx * dx + dy * dy;
+      if (len2 < 1e-8) return Math.hypot(px - x1, py - y1);
+      const t = Math.max(0, Math.min(1, ((px - x1) * dx + (py - y1) * dy) / len2));
+      return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy));
+    }
+
+    function segmentsIntersect(ax, ay, bx, by, cx, cy, dx, dy) {
+      const ccw = (p1x, p1y, p2x, p2y, p3x, p3y) =>
+        (p3y - p1y) * (p2x - p1x) > (p2y - p1y) * (p3x - p1x);
+      return (ccw(ax, ay, cx, cy, dx, dy) !== ccw(bx, by, cx, cy, dx, dy)) &&
+             (ccw(ax, ay, bx, by, cx, cy) !== ccw(ax, ay, bx, by, dx, dy));
+    }
+
+    // =========================================================================
+    // MODULE 6: PhysicsEngine (第3層：連続剛体物理 ＋ 結合輪郭SAT ＋ 構造分離)
+    // =========================================================================
+    const GRAVITY = 510;
+    const PhysicsEngine = {
+      bodies: [],
+      particles: [],
+      contacts: [],
+      simTime: 0,
+      nextBodyId: 1,
+      stats: {
+        brokenBonds: 0,
+        destroyedTris: 0,
+        maxSpeed: 0,
+        totalMass: 0
+      },
+      diag: null,
+      eventListeners: [],
+
+      emitEvent(msg, type = 'info') {
+        for (const fn of this.eventListeners) fn(msg, type, this.simTime);
+      },
+
+      spawnParticle(x, y, vx, vy, life, color, size) {
+        if (this.particles.length > 260) return;
+        this.particles.push({ x, y, vx, vy, age: 0, life, color, size });
+      },
+
+      hasAnyEnergyTri() {
+        for (const b of this.bodies) {
+          for (const tr of b.tris) {
+            if (!tr.consumed && MATERIALS[tr.matId].kind === 'energy') return true;
+          }
+        }
+        return false;
+      },
+
+      initFromDesign(trisGrid, severedBonds, autoIgnite) {
+        this.bodies = [];
+        this.particles = [];
+        this.contacts = [];
+        this.simTime = 0;
+        this.nextBodyId = 1;
+        this.stats = { brokenBonds: 0, destroyedTris: 0, maxSpeed: 0, totalMass: 0 };
+        FieldEngine.reset();
+
+        // 連結成分をBFSで抽出して複合剛体を構築
+        const visited = new Set();
+        let initialEnergyTris = 0;
+        let energySumX = 0, energySumY = 0;
+        const openLeakPoints = [];
+
+        for (let r = 0; r < GRID_ROWS; r++) {
+          for (let c = 0; c < GRID_COLS; c++) {
+            for (let t = 0; t < 6; t++) {
+              const matId = trisGrid[r][c][t];
+              if (!matId) continue;
+              const startKey = TriHexMath.triKey(r, c, t);
+              if (visited.has(startKey)) continue;
+
+              const queue = [[r, c, t]];
+              visited.add(startKey);
+              const compTris = [];
+              const keyToIdx = new Map();
+
+              while (queue.length > 0) {
+                const [cr, cc, ct] = queue.shift();
+                const ck = TriHexMath.triKey(cr, cc, ct);
+                const mId = trisGrid[cr][cc][ct];
+                const mat = MATERIALS[mId];
+                const cent = TriHexMath.triCentroid(cr, cc, ct);
+                const verts = TriHexMath.triVertices(cr, cc, ct);
+
+                if (mat.kind === 'energy') {
+                  initialEnergyTris++;
+                  energySumX += cent.x;
+                  energySumY += cent.y;
+                }
+
+                keyToIdx.set(ck, compTris.length);
+                compTris.push({
+                  r: cr, c: cc, t: ct,
+                  matId: mat.id,
+                  wx: cent.x, wy: cent.y,
+                  wv: verts.map(v => ({ x: v.x, y: v.y })),
+                  lv: [{ x: 0, y: 0 }, { x: 0, y: 0 }, { x: 0, y: 0 }],
+                  lcx: 0, lcy: 0,
+                  exposed: [true, true, true],
+                  hp: mat.durability,
+                  maxHp: mat.durability,
+                  energyLeft: mat.kind === 'energy' ? mat.energyPool : 0,
+                  ignited: mat.kind === 'energy' ? autoIgnite : false,
+                  consumed: false,
+                  hitFlash: 0
+                });
+
+                const nbs = TriHexMath.triNeighbors(cr, cc, ct);
+                for (const nb of nbs) {
+                  if (!nb.valid) continue;
+                  if (!trisGrid[nb.r][nb.c][nb.t]) continue;
+                  const bk = TriHexMath.bondKey(cr, cc, ct, nb.r, nb.c, nb.t);
+                  if (severedBonds.has(bk)) continue;
+                  const nk = TriHexMath.triKey(nb.r, nb.c, nb.t);
+                  if (!visited.has(nk)) {
+                    visited.add(nk);
+                    queue.push([nb.r, nb.c, nb.t]);
+                  }
+                }
+              }
+
+              // 内部ボンドと露出辺の算出
+              const compBonds = [];
+              const addedBondKeys = new Set();
+              for (let i = 0; i < compTris.length; i++) {
+                const tr = compTris[i];
+                const nbs = TriHexMath.triNeighbors(tr.r, tr.c, tr.t);
+                for (const nb of nbs) {
+                  if (!nb.valid) continue;
+                  const nk = TriHexMath.triKey(nb.r, nb.c, nb.t);
+                  const j = keyToIdx.get(nk);
+                  if (j !== undefined) {
+                    const bk = TriHexMath.bondKey(tr.r, tr.c, tr.t, nb.r, nb.c, nb.t);
+                    if (!severedBonds.has(bk)) {
+                      tr.exposed[nb.edgeIdx] = false;
+                      if (!addedBondKeys.has(bk)) {
+                        addedBondKeys.add(bk);
+                        const mA = MATERIALS[tr.matId];
+                        const mB = MATERIALS[compTris[j].matId];
+                        compBonds.push({
+                          a: i,
+                          b: j,
+                          damage: 0,
+                          maxStress: Math.min(mA.durability, mB.durability) * 1.12
+                        });
+                      }
+                    }
+                  }
+                }
+              }
+
+              const body = this.createBodyFromTris(compTris, compBonds, 0, 0, 0);
+              this.bodies.push(body);
+              this.stats.totalMass += body.mass;
+            }
+          }
+        }
+
+        // 火薬・推進剤の周囲が開いている方向（圧力漏れ候補）を事前記録
+        if (initialEnergyTris > 0) {
+          for (let r = 0; r < GRID_ROWS; r++) {
+            for (let c = 0; c < GRID_COLS; c++) {
+              for (let t = 0; t < 6; t++) {
+                const mId = trisGrid[r][c][t];
+                if (!mId || MATERIALS[mId].kind !== 'energy') continue;
+                const nbs = TriHexMath.triNeighbors(r, c, t);
+                for (const nb of nbs) {
+                  if (nb.valid && !trisGrid[nb.r][nb.c][nb.t]) {
+                    const seg = TriHexMath.triEdgeSegment(r, c, t, nb.edgeIdx);
+                    openLeakPoints.push({ x: seg.mx, y: seg.my });
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        this.diag = {
+          initialBodies: this.bodies.length,
+          initialEnergyTris,
+          energyCenter: initialEnergyTris > 0 ? { x: energySumX / initialEnergyTris, y: energySumY / initialEnergyTris } : null,
+          ignitedCount: autoIgnite ? initialEnergyTris : 0,
+          ignitedAt: (autoIgnite && initialEnergyTris > 0) ? 0 : null,
+          peakFieldEnergy: 0,
+          pressureFractures: [],
+          openLeakPoints,
+          fastBodyPeak: 0,
+          fastBodyJammedAt: null,
+          jamPoint: null
+        };
+
+        if (autoIgnite && this.hasAnyEnergyTri()) {
+          SoundFX.energyPulse(1.0);
+          this.emitEvent('シミュレーション開始・火薬/推進剤に点火', 'warn');
+        }
+      },
+
+      createBodyFromTris(tris, bonds, vx, vy, omega) {
+        let totalMass = 0;
+        let cx = 0, cy = 0;
+        for (const tr of tris) {
+          const m = MATERIALS[tr.matId].density * 0.85;
+          totalMass += m;
+          cx += tr.wx * m;
+          cy += tr.wy * m;
+        }
+        cx /= Math.max(0.001, totalMass);
+        cy /= Math.max(0.001, totalMass);
+
+        let inertia = 0;
+        for (const tr of tris) {
+          const m = MATERIALS[tr.matId].density * 0.85;
+          tr.lcx = tr.wx - cx;
+          tr.lcy = tr.wy - cy;
+          for (let k = 0; k < 3; k++) {
+            tr.lv[k] = { x: tr.wv[k].x - cx, y: tr.wv[k].y - cy };
+          }
+          const r2 = tr.lcx * tr.lcx + tr.lcy * tr.lcy;
+          inertia += m * (r2 + 120);
+        }
+
+        const body = {
+          id: this.nextBodyId++,
+          x: cx,
+          y: cy,
+          vx,
+          vy,
+          angle: 0,
+          omega,
+          mass: totalMass,
+          invMass: 1 / Math.max(0.1, totalMass),
+          inertia: Math.max(120, inertia),
+          invInertia: 1 / Math.max(120, inertia),
+          tris,
+          bonds,
+          aabb: { minX: 0, maxX: 0, minY: 0, maxY: 0 },
+          needsSplitCheck: false,
+          peakSpeed: 0
+        };
+        this.updateBodyWorldVerts(body);
+        return body;
+      },
+
+      updateBodyWorldVerts(body) {
+        const cos = Math.cos(body.angle);
+        const sin = Math.sin(body.angle);
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        for (const tr of body.tris) {
+          tr.wx = body.x + tr.lcx * cos - tr.lcy * sin;
+          tr.wy = body.y + tr.lcx * sin + tr.lcy * cos;
+          for (let k = 0; k < 3; k++) {
+            const lx = tr.lv[k].x;
+            const ly = tr.lv[k].y;
+            const wx = body.x + lx * cos - ly * sin;
+            const wy = body.y + lx * sin + ly * cos;
+            tr.wv[k].x = wx;
+            tr.wv[k].y = wy;
+            if (wx < minX) minX = wx;
+            if (wx > maxX) maxX = wx;
+            if (wy < minY) minY = wy;
+            if (wy > maxY) maxY = wy;
+          }
+        }
+        body.aabb.minX = minX;
+        body.aabb.maxX = maxX;
+        body.aabb.minY = minY;
+        body.aabb.maxY = maxY;
+      },
+
+      triggerAllEnergy() {
+        let count = 0;
+        for (const body of this.bodies) {
+          for (const tri of body.tris) {
+            const mat = MATERIALS[tri.matId];
+            if (mat.kind === 'energy' && !tri.ignited && tri.energyLeft > 0 && !tri.consumed) {
+              tri.ignited = true;
+              count++;
+            }
+          }
+        }
+        if (count > 0) {
+          if (this.diag) {
+            this.diag.ignitedCount += count;
+            if (this.diag.ignitedAt === null) this.diag.ignitedAt = this.simTime;
+          }
+          SoundFX.energyPulse(Math.min(1.5, 0.85 + count * 0.04));
+          this.emitEvent(`⚡ 火薬・推進剤 ${count}△ に点火`, 'warn');
+        }
+        return count;
+      },
+
+      step(dt) {
+        this.simTime += dt;
+        this.contacts = [];
+
+        // 1. 第2層（六角圧力フィールド）更新
+        FieldEngine.rasterizeBodies(this.bodies);
+        for (let fi = 0; fi < 2; fi++) {
+          const fdt = dt / 2;
+          for (const body of this.bodies) {
+            for (const tri of body.tris) {
+              const mat = MATERIALS[tri.matId];
+              if (mat.kind === 'energy' && tri.ignited && tri.energyLeft > 0 && !tri.consumed) {
+                const spend = Math.min(tri.energyLeft, mat.releaseRate * fdt);
+                tri.energyLeft -= spend;
+                FieldEngine.inject(tri.wx, tri.wy, spend * mat.fieldGain);
+                if (Math.random() < 0.28) {
+                  this.spawnParticle(tri.wx, tri.wy, (Math.random() - 0.5) * 120, (Math.random() - 0.5) * 120, 0.26, mat.accent, 3.2);
+                }
+                // 火薬は起爆・放出完了と同時に消滅し、薬室を空洞化（必要なら構造も分離）
+                if (tri.energyLeft <= 0 && mat.consumeOnDetonate) {
+                  tri.consumed = true;
+                  body.needsSplitCheck = true;
+                  for (let k = 0; k < 4; k++) {
+                    const a = Math.random() * Math.PI * 2;
+                    const s = 55 + Math.random() * 145;
+                    this.spawnParticle(tri.wx, tri.wy, Math.cos(a) * s, Math.sin(a) * s, 0.34, k % 2 ? '#fde047' : '#fb7185', 4.0);
+                  }
+                }
+              }
+            }
+          }
+          FieldEngine.step(fdt);
+        }
+
+        if (this.diag && FieldEngine.peakEnergy > this.diag.peakFieldEnergy) {
+          this.diag.peakFieldEnergy = FieldEngine.peakEnergy;
+        }
+
+        // 2. 圧力場の外周面積分（F = -∮ P n ds）＋ 内圧による構造負荷
+        for (const body of this.bodies) {
+          let fx = 0, fy = GRAVITY * body.mass, torque = 0;
+
+          for (const tri of body.tris) {
+            tri.hitFlash = Math.max(0, tri.hitFlash - dt * 5);
+            if (tri.hp <= 0 || tri.consumed) continue;
+            const mat = MATERIALS[tri.matId];
+            if (mat.kind === 'energy') continue;
+
+            let maxLocalP = 0;
+            for (let eIdx = 0; eIdx < 3; eIdx++) {
+              if (!tri.exposed[eIdx]) continue;
+              const p1 = tri.wv[eIdx];
+              const p2 = tri.wv[(eIdx + 1) % 3];
+              const ex = p2.x - p1.x;
+              const ey = p2.y - p1.y;
+              const len = Math.hypot(ex, ey);
+              if (len < 1e-4) continue;
+
+              // 外向き法線（三角形重心から外側を向く方向）
+              let nx = ey / len;
+              let ny = -ex / len;
+              const mx = (p1.x + p2.x) * 0.5;
+              const my = (p1.y + p2.y) * 0.5;
+              if ((mx - tri.wx) * nx + (my - tri.wy) * ny < 0) {
+                nx = -nx;
+                ny = -ny;
+              }
+
+              // 外側少し先で圧力をサンプリング
+              const pSample = FieldEngine.sampleAt(mx + nx * 13, my + ny * 13);
+              if (pSample > maxLocalP) maxLocalP = pSample;
+              if (pSample > 0.4) {
+                const forceMag = pSample * len * 1.95;
+                const dfx = -nx * forceMag;
+                const dfy = -ny * forceMag;
+                fx += dfx;
+                fy += dfy;
+                torque += (mx - body.x) * dfy - (my - body.y) * dfx;
+              }
+            }
+
+            // 過圧ダメージ判定（薄肉・軽質材ケーシングは高圧で破断！）
+            const pressureThreshold = mat.durability * 1.05;
+            if (maxLocalP > pressureThreshold) {
+              const excess = maxLocalP - pressureThreshold;
+              const dmg = excess * dt * 4.4;
+              tri.hp -= dmg;
+              tri.hitFlash = 0.7;
+              if (tri.hp <= 0) {
+                body.needsSplitCheck = true;
+                if (this.diag) this.diag.pressureFractures.push({ x: tri.wx, y: tri.wy });
+              }
+            }
+          }
+
+          // 内部ボンドへの過圧引張負荷
+          if (FieldEngine.peakEnergy > 35 && body.bonds.length > 0) {
+            for (const bond of body.bonds) {
+              const tA = body.tris[bond.a];
+              const tB = body.tris[bond.b];
+              if (tA.hp <= 0 || tB.hp <= 0 || tA.consumed || tB.consumed) continue;
+              const pMid = FieldEngine.sampleAt((tA.wx + tB.wx) * 0.5, (tA.wy + tB.wy) * 0.5);
+              if (pMid > bond.maxStress * 0.88) {
+                bond.damage += (pMid - bond.maxStress * 0.88) * dt * 3.8;
+                if (bond.damage >= bond.maxStress) {
+                  body.needsSplitCheck = true;
+                  if (this.diag) this.diag.pressureFractures.push({ x: (tA.wx + tB.wx) * 0.5, y: (tA.wy + tB.wy) * 0.5 });
+                }
+              }
+            }
+          }
+
+          // 速度・角速度更新（軽微な空気減衰）
+          body.vx = (body.vx + fx * body.invMass * dt) * (1 - 0.08 * dt);
+          body.vy = (body.vy + fy * body.invMass * dt) * (1 - 0.08 * dt);
+          body.omega = (body.omega + torque * body.invInertia * dt) * (1 - 0.32 * dt);
+
+          // 速度クランプ
+          const spd = Math.hypot(body.vx, body.vy);
+          if (spd > 1350) {
+            body.vx *= 1350 / spd;
+            body.vy *= 1350 / spd;
+          }
+          body.omega = Math.max(-18, Math.min(18, body.omega));
+        }
+
+        // 3. 連続移動＆衝突解決（3サブステップで高速弾のすり抜け防止）
+        const subSteps = 3;
+        const subDt = dt / subSteps;
+        for (let s = 0; s < subSteps; s++) {
+          for (const body of this.bodies) {
+            body.x += body.vx * subDt;
+            body.y += body.vy * subDt;
+            body.angle += body.omega * subDt;
+            this.updateBodyWorldVerts(body);
+          }
+          this.resolveWorldBounds();
+          this.resolveBodyCollisions();
+        }
+
+        // 4. 破壊・火薬消滅・構造分離処理
+        const snapshot = [...this.bodies];
+        for (const body of snapshot) {
+          if (body.needsSplitCheck) {
+            this.processFractureAndSplit(body);
+          }
+        }
+
+        // 5. 速度統計＆引っかかり診断
+        for (const body of this.bodies) {
+          const spd = Math.hypot(body.vx, body.vy);
+          if (spd > this.stats.maxSpeed) this.stats.maxSpeed = spd;
+          if (spd > body.peakSpeed) body.peakSpeed = spd;
+          if (this.diag && spd > this.diag.fastBodyPeak) this.diag.fastBodyPeak = spd;
+          if (this.diag && body.tris.length <= 16 && body.peakSpeed > 150 && spd < 35 && this.simTime > 0.45 && this.diag.fastBodyJammedAt === null) {
+            if (body.x < 460 && body.y < GROUND_Y - 18) {
+              this.diag.fastBodyJammedAt = this.simTime;
+              this.diag.jamPoint = { x: body.x, y: body.y };
+            }
+          }
+        }
+
+        // 6. パーティクル更新
+        for (const pt of this.particles) {
+          pt.age += dt;
+          pt.vy += 260 * dt;
+          pt.x += pt.vx * dt;
+          pt.y += pt.vy * dt;
+        }
+        this.particles = this.particles.filter(pt => pt.age < pt.life);
+      },
+
+      resolveWorldBounds() {
+        for (const body of this.bodies) {
+          if (body.aabb.maxY < GROUND_Y && body.aabb.minX > 4 && body.aabb.maxX < WORLD_W - 4 && body.aabb.minY > 4) continue;
+
+          // 地面接触（複数頂点の支持で平板がピタッと安定する）
+          const groundHits = [];
+          for (const tr of body.tris) {
+            if (tr.hp <= 0 || tr.consumed) continue;
+            const mat = MATERIALS[tr.matId];
+            for (const v of tr.wv) {
+              if (v.y > GROUND_Y) {
+                groundHits.push({ vx: v.x, vy: v.y, pen: v.y - GROUND_Y, mat, tri: tr });
+              }
+            }
+          }
+          if (groundHits.length > 0) {
+            let maxPen = 0;
+            for (const h of groundHits) if (h.pen > maxPen) maxPen = h.pen;
+            body.y -= maxPen;
+            this.updateBodyWorldVerts(body);
+
+            // 接地頂点ごとのインパルスを均等分散適用
+            const invCount = 1 / Math.min(4, groundHits.length);
+            groundHits.sort((a, b) => b.pen - a.pen);
+            const sampleHits = groundHits.slice(0, 4);
+            for (const h of sampleHits) {
+              const rx = h.vx - body.x;
+              const ry = GROUND_Y - body.y;
+              const vpx = body.vx - body.omega * ry;
+              const vpy = body.vy + body.omega * rx;
+              if (vpy > 0) {
+                const e = vpy > 55 ? h.mat.restitution : 0;
+                const rCrossN = rx * -1; // n = (0, -1)
+                const denom = body.invMass + (rCrossN * rCrossN) * body.invInertia;
+                const j = (-(1 + e) * (-vpy) / denom) * invCount;
+                body.vy -= j * body.invMass;
+                body.omega += rx * (-j) * body.invInertia;
+
+                // 地面摩擦
+                const vt = vpx;
+                const rt = -ry;
+                const denomT = body.invMass + (rt * rt) * body.invInertia;
+                let jt = (-vt / denomT) * invCount;
+                const maxF = j * h.mat.friction;
+                jt = Math.max(-maxF, Math.min(maxF, jt));
+                body.vx += jt * body.invMass;
+                body.omega += (-ry * jt) * body.invInertia;
+
+                if (vpy > 140) {
+                  this.applyImpactDamage(body, h.tri, vpy, h.vx, GROUND_Y);
+                }
+              }
+            }
+            // 微小振動スリープ安定化
+            if (Math.abs(body.vy) < 6 && Math.abs(body.omega) < 0.08) {
+              body.omega *= 0.85;
+            }
+          }
+
+          // 左右・天井壁
+          if (body.aabb.minX < 4) {
+            body.x += (4 - body.aabb.minX);
+            if (body.vx < 0) body.vx = -body.vx * 0.45;
+            this.updateBodyWorldVerts(body);
+          } else if (body.aabb.maxX > WORLD_W - 4) {
+            body.x -= (body.aabb.maxX - (WORLD_W - 4));
+            if (body.vx > 0) body.vx = -body.vx * 0.45;
+            this.updateBodyWorldVerts(body);
+          }
+          if (body.aabb.minY < 4) {
+            body.y += (4 - body.aabb.minY);
+            if (body.vy < 0) body.vy = -body.vy * 0.45;
+            this.updateBodyWorldVerts(body);
+          }
+        }
+      },
+
+      resolveBodyCollisions() {
+        const n = this.bodies.length;
+        for (let i = 0; i < n; i++) {
+          const A = this.bodies[i];
+          for (let j = i + 1; j < n; j++) {
+            const B = this.bodies[j];
+            if (A.aabb.maxX < B.aabb.minX || A.aabb.minX > B.aabb.maxX ||
+                A.aabb.maxY < B.aabb.minY || A.aabb.minY > B.aabb.maxY) continue;
+
+            // 外周に露出した三角形同士をSAT判定
+            let bestHit = null;
+            let bestTriA = null, bestTriB = null;
+
+            for (const tA of A.tris) {
+              if (tA.hp <= 0 || tA.consumed) continue;
+              if (!tA.exposed[0] && !tA.exposed[1] && !tA.exposed[2]) continue;
+              for (const tB of B.tris) {
+                if (tB.hp <= 0 || tB.consumed) continue;
+                if (!tB.exposed[0] && !tB.exposed[1] && !tB.exposed[2]) continue;
+                const dx = tB.wx - tA.wx;
+                const dy = tB.wy - tA.wy;
+                if (dx * dx + dy * dy > (HEX_R * 1.45) ** 2) continue;
+
+                const hit = satTriangleCollision(tA.wv, tB.wv);
+                if (hit && (!bestHit || hit.depth > bestHit.depth)) {
+                  bestHit = hit;
+                  bestTriA = tA;
+                  bestTriB = tB;
+                }
+              }
+            }
+
+            if (!bestHit) continue;
+
+            const { nx, ny, depth, px, py } = bestHit;
+            const totalInvMass = A.invMass + B.invMass;
+            if (totalInvMass <= 0) continue;
+
+            // 位置補正
+            const corr = Math.max(0, depth - 0.15) * 0.78 / totalInvMass;
+            A.x -= nx * corr * A.invMass;
+            A.y -= ny * corr * A.invMass;
+            B.x += nx * corr * B.invMass;
+            B.y += ny * corr * B.invMass;
+
+            const rAx = px - A.x, rAy = py - A.y;
+            const rBx = px - B.x, rBy = py - B.y;
+            const vAx = A.vx - A.omega * rAy, vAy = A.vy + A.omega * rAx;
+            const vBx = B.vx - B.omega * rBy, vBy = B.vy + B.omega * rBx;
+            const rvx = vBx - vAx;
+            const rvy = vBy - vAy;
+            const velAlongN = rvx * nx + rvy * ny;
+
+            if (velAlongN < 0) {
+              const mA = MATERIALS[bestTriA.matId];
+              const mB = MATERIALS[bestTriB.matId];
+              const impactSpd = -velAlongN;
+              const e = impactSpd > 38 ? Math.max(mA.restitution, mB.restitution) : 0;
+
+              const rACrossN = rAx * ny - rAy * nx;
+              const rBCrossN = rBx * ny - rBy * nx;
+              const denom = totalInvMass + (rACrossN * rACrossN) * A.invInertia + (rBCrossN * rBCrossN) * B.invInertia;
+              const jImp = -(1 + e) * velAlongN / denom;
+
+              const ix = jImp * nx;
+              const iy = jImp * ny;
+              A.vx -= ix * A.invMass;
+              A.vy -= iy * A.invMass;
+              A.omega -= rACrossN * jImp * A.invInertia;
+              B.vx += ix * B.invMass;
+              B.vy += iy * B.invMass;
+              B.omega += rBCrossN * jImp * B.invInertia;
+
+              // 接線摩擦（滑性材ならほぼ摩擦ゼロで砲身内を高速滑走！）
+              const tx = -ny, ty = nx;
+              const vt = rvx * tx + rvy * ty;
+              const rACrossT = rAx * ty - rAy * tx;
+              const rBCrossT = rBx * ty - rBy * tx;
+              const denomT = totalInvMass + (rACrossT * rACrossT) * A.invInertia + (rBCrossT * rBCrossT) * B.invInertia;
+              let jt = -vt / denomT;
+              const mu = Math.sqrt(mA.friction * mB.friction);
+              const maxJt = jImp * mu;
+              jt = Math.max(-maxJt, Math.min(maxJt, jt));
+
+              A.vx -= jt * tx * A.invMass;
+              A.vy -= jt * ty * A.invMass;
+              A.omega -= rACrossT * jt * A.invInertia;
+              B.vx += jt * tx * B.invMass;
+              B.vy += jt * ty * B.invMass;
+              B.omega += rBCrossT * jt * B.invInertia;
+
+              if (impactSpd > 65) {
+                this.contacts.push({ x: px, y: py, power: Math.min(1, impactSpd / 400) });
+                this.applyImpactDamage(A, bestTriA, impactSpd, px, py);
+                this.applyImpactDamage(B, bestTriB, impactSpd, px, py);
+                SoundFX.impact(Math.min(1, impactSpd / 360));
+              }
+            }
+            this.updateBodyWorldVerts(A);
+            this.updateBodyWorldVerts(B);
+          }
+        }
+      },
+
+      applyImpactDamage(body, tri, impactSpd, px, py) {
+        const mat = MATERIALS[tri.matId];
+        // 衝撃による火薬・推進剤の起爆！
+        if (mat.kind === 'energy' && !tri.ignited && tri.energyLeft > 0 && impactSpd > 140) {
+          tri.ignited = true;
+          if (this.diag) {
+            this.diag.ignitedCount++;
+            if (this.diag.ignitedAt === null) this.diag.ignitedAt = this.simTime;
+          }
+          SoundFX.energyPulse(1.05);
+          this.emitEvent(`💥 衝撃により${mat.name}が起爆！`, 'danger');
+        }
+
+        if (impactSpd < 135) return;
+        const dmg = (impactSpd - 120) * 0.24;
+        tri.hp -= dmg;
+        tri.hitFlash = 0.85;
+        if (tri.hp <= 0) {
+          body.needsSplitCheck = true;
+        }
+        // 衝突点の接続にも衝撃ダメージ伝達
+        const triIdx = body.tris.indexOf(tri);
+        if (triIdx >= 0) {
+          for (const bond of body.bonds) {
+            if (bond.a === triIdx || bond.b === triIdx) {
+              bond.damage += dmg * 0.85;
+              if (bond.damage >= bond.maxStress) body.needsSplitCheck = true;
+            }
+          }
+        }
+        for (let k = 0; k < 3; k++) {
+          this.spawnParticle(px, py, (Math.random() - 0.5) * 140, -30 - Math.random() * 90, 0.28, '#fde047', 2.4);
+        }
+      },
+
+      processFractureAndSplit(body) {
+        body.needsSplitCheck = false;
+        const aliveMask = body.tris.map(t => t.hp > 0 && !t.consumed);
+        let anyDestroyed = false;
+        let anyConsumed = false;
+        let anyBrokenBond = false;
+
+        for (let i = 0; i < body.tris.length; i++) {
+          if (!aliveMask[i]) {
+            const tri = body.tris[i];
+            if (tri.consumed) {
+              anyConsumed = true;
+              continue;
+            }
+            anyDestroyed = true;
+            this.stats.destroyedTris++;
+            const mat = MATERIALS[tri.matId];
+            for (let k = 0; k < 5; k++) {
+              const a = Math.random() * Math.PI * 2;
+              const s = 45 + Math.random() * 140;
+              this.spawnParticle(tri.wx, tri.wy, Math.cos(a) * s, Math.sin(a) * s - 35, 0.5, mat.accent, 3.6);
+            }
+          }
+        }
+
+        const adj = body.tris.map(() => []);
+        const aliveBonds = [];
+        for (const bond of body.bonds) {
+          if (!aliveMask[bond.a] || !aliveMask[bond.b]) continue;
+          if (bond.damage >= bond.maxStress) {
+            anyBrokenBond = true;
+            this.stats.brokenBonds++;
+            const mx = (body.tris[bond.a].wx + body.tris[bond.b].wx) * 0.5;
+            const my = (body.tris[bond.a].wy + body.tris[bond.b].wy) * 0.5;
+            for (let k = 0; k < 4; k++) {
+              this.spawnParticle(mx, my, (Math.random() - 0.5) * 110, (Math.random() - 0.5) * 110, 0.32, '#fbbf24', 3.0);
+            }
+            continue;
+          }
+          adj[bond.a].push(bond.b);
+          adj[bond.b].push(bond.a);
+          aliveBonds.push(bond);
+        }
+
+        if (!anyDestroyed && !anyConsumed && !anyBrokenBond) return;
+
+        if (anyDestroyed || anyBrokenBond) SoundFX.fracture();
+        if (anyConsumed) this.emitEvent('🔥 火薬が起爆・消滅', 'warn');
+        if (anyDestroyed) this.emitEvent('💥 物質が限界超過で破砕', 'danger');
+        if (anyBrokenBond) this.emitEvent('⚡ 接続が破断・構造分離！', 'warn');
+
+        // 元のボディを削除し、生存した連結成分を新しい独立剛体へ再構築
+        const bIdx = this.bodies.indexOf(body);
+        if (bIdx >= 0) this.bodies.splice(bIdx, 1);
+
+        const visited = new Uint8Array(body.tris.length);
+        for (let i = 0; i < body.tris.length; i++) {
+          if (!aliveMask[i] || visited[i]) continue;
+          const q = [i];
+          visited[i] = 1;
+          const compIdx = [];
+          while (q.length > 0) {
+            const u = q.shift();
+            compIdx.push(u);
+            for (const v of adj[u]) {
+              if (aliveMask[v] && !visited[v]) {
+                visited[v] = 1;
+                q.push(v);
+              }
+            }
+          }
+
+          const oldToNew = new Map();
+          const newTris = compIdx.map((oldI, newI) => {
+            oldToNew.set(oldI, newI);
+            const tr = body.tris[oldI];
+            tr.exposed = [true, true, true];
+            return tr;
+          });
+
+          const newBonds = [];
+          for (const bond of aliveBonds) {
+            if (oldToNew.has(bond.a) && oldToNew.has(bond.b)) {
+              const na = oldToNew.get(bond.a);
+              const nb = oldToNew.get(bond.b);
+              newBonds.push({ a: na, b: nb, damage: bond.damage, maxStress: bond.maxStress });
+              // 露出辺フラグを再更新
+              const tA = newTris[na];
+              const tB = newTris[nb];
+              const nbsA = TriHexMath.triNeighbors(tA.r, tA.c, tA.t);
+              for (const nbInfo of nbsA) {
+                if (nbInfo.r === tB.r && nbInfo.c === tB.c && nbInfo.t === tB.t) tA.exposed[nbInfo.edgeIdx] = false;
+              }
+              const nbsB = TriHexMath.triNeighbors(tB.r, tB.c, tB.t);
+              for (const nbInfo of nbsB) {
+                if (nbInfo.r === tA.r && nbInfo.c === tA.c && nbInfo.t === tA.t) tB.exposed[nbInfo.edgeIdx] = false;
+              }
+            }
+          }
+
+          // 親剛体の重心からの距離に応じて回転速度分の並進速度を正確に引き継ぐ
+          let avgX = 0, avgY = 0;
+          for (const tr of newTris) { avgX += tr.wx; avgY += tr.wy; }
+          avgX /= newTris.length;
+          avgY /= newTris.length;
+          const rx = avgX - body.x;
+          const ry = avgY - body.y;
+          const childVx = body.vx - body.omega * ry;
+          const childVy = body.vy + body.omega * rx;
+          const newBody = this.createBodyFromTris(newTris, newBonds, childVx, childVy, body.omega);
+          this.bodies.push(newBody);
+        }
+      }
+    };
+
+    // =========================================================================
+    // MODULE 7: PhysicsAdvisor — 失敗原因の自動診断＆控えめ観測メモ
+    // =========================================================================
+    const PhysicsAdvisor = {
+      hints: [],
+      markers: [],
+      cardOpen: false,
+      showPins: true,
+      hasLastDesignHints: false,
+
+      reset(clearAll = true) {
+        if (clearAll) {
+          this.hints = [];
+          this.markers = [];
+          this.hasLastDesignHints = false;
+        }
+        this.cardOpen = false;
+        this.syncUI();
+      },
+
+      clearDesignPinsOnEdit() {
+        if (this.hasLastDesignHints) {
+          this.hints = [];
+          this.markers = [];
+          this.hasLastDesignHints = false;
+          this.cardOpen = false;
+          this.syncUI();
+        }
+      },
+
+      evaluate() {
+        const d = PhysicsEngine.diag;
+        if (!d) return;
+        const t = PhysicsEngine.simTime;
+        const maxSpd = PhysicsEngine.stats.maxSpeed;
+        const hints = [];
+        const markers = [];
+
+        // 1. 火薬・推進剤が未点火のまま時間が経過
+        if (d.initialEnergyTris > 0 && d.ignitedCount === 0 && t >= 1.25) {
+          hints.push({
+            id: 'unignited',
+            severity: 'warn',
+            phenomenon: '火薬・推進剤が待機状態のまま点火していません。',
+            tip: '[SPACE] キーまたは下の「⚡ 点火」で起爆できます。設計画面で「⚡自動点火: ON」にすると実行と同時に点火します。'
+          });
+          if (d.energyCenter) {
+            markers.push({ x: d.energyCenter.x, y: d.energyCenter.y, color: '#fbbf24', label: '未点火' });
+          }
+        }
+
+        // 2. 過圧による構造破断・破砕
+        if (d.pressureFractures.length > 0 && d.ignitedAt !== null && (t - d.ignitedAt) >= 0.25) {
+          hints.push({
+            id: 'rupture',
+            severity: 'danger',
+            phenomenon: '発生した内圧が囲いの耐久限界を超え、構造が破断・暴発しました。',
+            tip: '囲いの素材を「重質材」にするか、壁の厚みを増やす・火薬の量を減らすと耐圧が上がります。'
+          });
+          d.pressureFractures.slice(0, 3).forEach((pf, idx) => {
+            markers.push({ x: pf.x, y: pf.y, color: '#fb7185', label: idx === 0 ? '過圧破断' : '' });
+          });
+        }
+
+        // 3. 全ブロックが結合されたままで飛翔体が分離していない
+        if (d.initialBodies === 1 && d.ignitedAt !== null && (t - d.ignitedAt) >= 0.65 && maxSpd < 160 && PhysicsEngine.bodies.length <= 1) {
+          hints.push({
+            id: 'all_bonded',
+            severity: 'warn',
+            phenomenon: 'すべてのブロックが1つの剛体としてくっついており、弾丸だけが飛び出せていません。',
+            tip: '「🔗 接続」ツールで弾と砲身の境界を横切って切り離すか、「自動接続: OFF」で弾を配置してください。'
+          });
+          if (d.energyCenter) {
+            markers.push({ x: d.energyCenter.x + 42, y: d.energyCenter.y, color: '#22d3ee', label: '全体が結合中' });
+          }
+        }
+
+        // 4. 圧力が周囲へ拡散して加速が弱い
+        if (d.ignitedAt !== null && (t - d.ignitedAt) >= 0.7 && d.peakFieldEnergy < 54 && maxSpd < 185 && d.pressureFractures.length === 0) {
+          hints.push({
+            id: 'leak',
+            severity: 'warn',
+            phenomenon: '放出されたエネルギーが周囲へ逃げてしまい、圧力が十分に高まっていません。',
+            tip: '火薬の後ろと上下を「重質材」で囲って筒状にすると、圧力勾配が一方向に集中して強く押し出せます。'
+          });
+          d.openLeakPoints.slice(0, 3).forEach((lp, idx) => {
+            markers.push({ x: lp.x, y: lp.y, color: '#fb923c', label: idx === 0 ? '圧力が拡散' : '' });
+          });
+        }
+
+        // 5. 摩擦・引っかかりによる急減速
+        if (d.fastBodyJammedAt !== null && d.jamPoint) {
+          hints.push({
+            id: 'friction_jam',
+            severity: 'info',
+            phenomenon: '加速した飛翔体が砲身内壁との摩擦や段差で急減速しています。',
+            tip: '飛翔体を極低摩擦の「滑性材」にするか、「╱ 直線」ツールで凹凸のない平らな内壁を作ってみてください。'
+          });
+          markers.push({ x: d.jamPoint.x, y: d.jamPoint.y, color: '#60a5fa', label: '減速・引っかかり' });
+        }
+
+        // 6. 火薬・推進剤なし＆ほぼ静止状態
+        if (d.initialEnergyTris === 0 && t >= 1.5 && maxSpd < 45 && PhysicsEngine.bodies.length > 0) {
+          hints.push({
+            id: 'static',
+            severity: 'info',
+            phenomenon: '火薬や推進剤がなく、重力だけでは構造が静止しています。',
+            tip: '「火薬」や「推進剤」を組み込むか、高所から重質ブロックを落としてシーソーや衝撃伝達を作ってみましょう。'
+          });
+        }
+
+        const prevSig = this.hints.map(h => h.id).join(',');
+        const nextSig = hints.map(h => h.id).join(',');
+        this.hints = hints;
+        this.markers = markers;
+        if (hints.length > 0) this.hasLastDesignHints = true;
+        if (prevSig !== nextSig) this.syncUI();
+      },
+
+      syncUI() {
+        if (this.hints.length === 0) {
+          el.hintDock.classList.add('hidden');
+          el.hintCard.classList.add('hidden');
+          return;
+        }
+        el.hintDock.classList.remove('hidden');
+        el.hintCountBadge.textContent = String(this.hints.length);
+        el.hintCard.classList.toggle('hidden', !this.cardOpen);
+        el.btnToggleHintPin.textContent = `📍 原因箇所マーク: ${this.showPins ? 'ON' : 'OFF'}`;
+
+        const sevStyle = {
+          danger: 'border-rose-500/45 bg-rose-950/45 text-rose-200',
+          warn: 'border-amber-500/45 bg-amber-950/40 text-amber-100',
+          info: 'border-cyan-500/40 bg-cyan-950/35 text-cyan-100'
+        };
+        el.hintList.innerHTML = this.hints.map(h => `
+          <div class="p-2 rounded-lg border ${sevStyle[h.severity] || sevStyle.info} space-y-1">
+            <div class="font-bold leading-snug">🔎 ${h.phenomenon}</div>
+            <div class="text-[11px] text-slate-300 leading-snug">→ ${h.tip}</div>
+          </div>
+        `).join('');
+      }
+    };
+
+    // =========================================================================
+    // MODULE 8: 状態管理 & プリセットビルダー
+    // =========================================================================
+    function createEmptyTriGrid() {
+      return Array.from({ length: GRID_ROWS }, () =>
+        Array.from({ length: GRID_COLS }, () => Array(6).fill(null))
+      );
+    }
+
+    const state = {
+      mode: 'design', // 'design' | 'sim'
+      tris: createEmptyTriGrid(),
+      severedBonds: new Set(),
+      history: [],
+      selectedMat: 'dense',
+      tool: 'hex', // 'hex' | 'tri' | 'line' | 'carve' | 'bond'
+      bondSubMode: 'cut', // 'cut' | 'join'
+      autoBond: true,
+      autoIgnite: true,
+      paused: false,
+      simSpeed: 1,
+      vis: {
+        field: true,
+        bonds: true,
+        mesh: false,
+        velocity: false,
+        damage: true,
+        contacts: true
+      },
+      // カメラ（ズーム＆パン）
+      cam: {
+        zoom: 1,
+        panX: 0,
+        panY: 0,
+        isPanning: false,
+        panStartScreenX: 0,
+        panStartScreenY: 0,
+        panStartX: 0,
+        panStartY: 0
+      },
+      // 設計ポインタ状態
+      isDrawing: false,
+      rightButton: false,
+      hoverHex: null,
+      hoverTri: null,
+      hoverEdge: null,
+      lineStart: null,
+      lineEnd: null,
+      linePreview: [],
+      // 接続ナイフドラッグ状態
+      bondDragActive: false,
+      bondDragMoved: false,
+      bondDragAction: 'cut',
+      bondStroke: [],
+      bondHitKeys: new Set(),
+      bondSparks: [],
+      // ブループリント名
+      currentName: '平滑バレル・火薬砲'
+    };
+
+    // 水平ストリップ b (0..15, b=15が床接地) 内の全三角形を返す
+    function bandLine(bandRow, xMin, xMax, matId) {
+      const yTop = GRID_OY + bandRow * HEX_H;
+      const yBot = yTop + HEX_H;
+      const out = [];
+      for (let r = 0; r < GRID_ROWS; r++) {
+        for (let c = 0; c < GRID_COLS; c++) {
+          for (let t = 0; t < 6; t++) {
+            if (!TriHexMath.triValid(r, c, t)) continue;
+            const cent = TriHexMath.triCentroid(r, c, t);
+            if (cent.y >= yTop && cent.y <= yBot && cent.x >= xMin && cent.x <= xMax) {
+              out.push([r, c, t, matId]);
+            }
+          }
+        }
+      }
+      return out;
+    }
+
+    // 60°または120°の斜め直線帯を収集（線分サンプリング）
+    function segmentTriangles(x1, y1, x2, y2, matId, thickness = 14) {
+      const dx = x2 - x1, dy = y2 - y1;
+      const len = Math.hypot(dx, dy);
+      if (len < 2) {
+        const tr = TriHexMath.worldToTri(x1, y1);
+        return tr ? [[tr.r, tr.c, tr.t, matId]] : [];
+      }
+      // 0°, 60°, 120° にスナップして凹凸ゼロの直線を作る
+      const rawAng = Math.atan2(dy, dx);
+      const snapAng = Math.round(rawAng / (Math.PI / 3)) * (Math.PI / 3);
+      const ex = x1 + Math.cos(snapAng) * len;
+      const ey = y1 + Math.sin(snapAng) * len;
+
+      const out = [];
+      for (let r = 0; r < GRID_ROWS; r++) {
+        for (let c = 0; c < GRID_COLS; c++) {
+          for (let t = 0; t < 6; t++) {
+            if (!TriHexMath.triValid(r, c, t)) continue;
+            const cent = TriHexMath.triCentroid(r, c, t);
+            if (distToSegment(cent.x, cent.y, x1, y1, ex, ey) <= thickness) {
+              out.push([r, c, t, matId]);
+            }
+          }
+        }
+      }
+      return out;
+    }
+
+    function hexGroup(r, c, matId) {
+      const out = [];
+      for (let t = 0; t < 6; t++) {
+        if (TriHexMath.triValid(r, c, t)) out.push([r, c, t, matId]);
+      }
+      return out;
+    }
+
+    function makeFlatTargetTower(xMin, xMax, levels) {
+      const groups = [];
+      for (let i = 0; i < levels; i++) {
+        const b = 15 - i;
+        const mat = i === levels - 1 ? 'dense' : 'light';
+        groups.push(bandLine(b, xMin, xMax, mat));
+      }
+      return groups;
+    }
+
+    // グループごとに内部接続・グループ間は自動切断するプリセットビルダー
+    function buildGroupedPreset(groups) {
+      const grid = createEmptyTriGrid();
+      const groupOf = new Map();
+      const severed = new Set();
+
+      groups.forEach((grp, gIdx) => {
+        for (const [r, c, t, matId] of grp) {
+          if (!TriHexMath.triValid(r, c, t)) continue;
+          grid[r][c][t] = matId;
+          groupOf.set(TriHexMath.triKey(r, c, t), gIdx);
+        }
+      });
+
+      for (let r = 0; r < GRID_ROWS; r++) {
+        for (let c = 0; c < GRID_COLS; c++) {
+          for (let t = 0; t < 6; t++) {
+            if (!grid[r][c][t]) continue;
+            const gA = groupOf.get(TriHexMath.triKey(r, c, t));
+            for (const nb of TriHexMath.triNeighbors(r, c, t)) {
+              if (!nb.valid || !grid[nb.r][nb.c][nb.t]) continue;
+              const gB = groupOf.get(TriHexMath.triKey(nb.r, nb.c, nb.t));
+              if (gA !== gB) {
+                severed.add(TriHexMath.bondKey(r, c, t, nb.r, nb.c, nb.t));
+              }
+            }
+          }
+        }
+      }
+      return { tris: grid, severed };
+    }
+
+    function getPreset(key) {
+      if (key === 'cannon') {
+        // ① 平滑バレル・火薬砲：凹凸ゼロの水平砲身＋独立した平滑滑性弾
+        const gunBody = [
+          ...bandLine(15, 75, 295, 'dense'),
+          ...bandLine(14, 75, 295, 'dense'),
+          ...bandLine(13, 75, 365, 'dense'),
+          ...bandLine(12, 75, 130, 'dense'),
+          ...bandLine(11, 75, 130, 'dense'),
+          ...bandLine(10, 75, 365, 'dense'),
+          ...hexGroup(6, 2, 'energy_pulse')
+        ];
+        const shell = [
+          ...bandLine(12, 200, 260, 'slick'),
+          ...bandLine(11, 200, 260, 'slick')
+        ];
+        return {
+          name: '平滑バレル・火薬砲',
+          autoIgnite: true,
+          ...buildGroupedPreset([gunBody, shell, ...makeFlatTargetTower(765, 855, 7)])
+        };
+      }
+
+      if (key === 'recoilless') {
+        // ② 楔（くさび）弾＆無反動砲：後方開放の平滑バレル（火薬消滅後も上壁を支える遠方懸架フレーム）
+        const gunBody = [
+          ...bandLine(15, 55, 320, 'light'),
+          ...bandLine(14, 55, 85, 'light'),
+          ...bandLine(13, 55, 85, 'light'),
+          ...bandLine(12, 55, 85, 'light'),
+          ...bandLine(11, 55, 85, 'light'),
+          ...bandLine(10, 55, 85, 'light'),
+          ...bandLine(9,  55, 250, 'light'),
+          ...bandLine(14, 235, 285, 'light'),
+          ...bandLine(13, 185, 420, 'dense'),
+          ...bandLine(10, 185, 420, 'dense'),
+          ...hexGroup(6, 4, 'energy_pulse')
+        ];
+        const wedgeShell = [
+          ...bandLine(12, 275, 330, 'slick'),
+          ...bandLine(11, 275, 330, 'slick'),
+          [6, 6, 0, 'dense'], [6, 6, 5, 'dense']
+        ];
+        return {
+          name: '楔弾＆無反動バレル砲',
+          autoIgnite: true,
+          ...buildGroupedPreset([gunBody, wedgeShell, ...makeFlatTargetTower(775, 860, 7)])
+        };
+      }
+
+      if (key === 'ricochet') {
+        // ③ 60°斜面バウンド跳弾砲：弾性材の60°ランプで壁越しに跳ねて標的へ！
+        const gunBody = [
+          ...bandLine(15, 75, 260, 'dense'),
+          ...bandLine(14, 75, 260, 'dense'),
+          ...bandLine(13, 75, 325, 'dense'),
+          ...bandLine(12, 75, 130, 'dense'),
+          ...bandLine(11, 75, 130, 'dense'),
+          ...bandLine(10, 75, 325, 'dense'),
+          ...hexGroup(6, 2, 'energy_pulse')
+        ];
+        const ball = hexGroup(6, 4, 'elastic');
+        // 60°反射斜面（弾性材）＋中央障害壁
+        const ramp = [
+          ...bandLine(15, 470, 575, 'dense'),
+          ...segmentTriangles(480, 468, 560, 332, 'elastic', 14)
+        ];
+        const wall = [
+          ...bandLine(15, 625, 675, 'dense'),
+          ...bandLine(14, 625, 675, 'dense'),
+          ...bandLine(13, 625, 675, 'dense'),
+          ...bandLine(12, 625, 675, 'dense'),
+          ...bandLine(11, 625, 675, 'dense')
+        ];
+        return {
+          name: '60°斜面バウンド跳弾砲',
+          autoIgnite: true,
+          ...buildGroupedPreset([gunBody, ball, ramp, wall, ...makeFlatTargetTower(805, 895, 6)])
+        };
+      }
+
+      if (key === 'rocket') {
+        // ④ ノズル形状・推進ロケット：尖ったノーズ＋末広がりノズル
+        const rocket = [
+          ...bandLine(10, 215, 240, 'dense'),
+          ...bandLine(11, 185, 270, 'light'),
+          ...bandLine(12, 175, 200, 'light'),
+          ...bandLine(12, 255, 280, 'light'),
+          ...hexGroup(6, 4, 'energy_sustained'),
+          ...bandLine(13, 165, 195, 'light'),
+          ...bandLine(13, 260, 290, 'light'),
+          ...bandLine(14, 155, 185, 'light'),
+          ...bandLine(14, 270, 300, 'light'),
+          ...bandLine(15, 155, 180, 'light'),
+          ...bandLine(15, 275, 300, 'light')
+        ];
+        return {
+          name: 'ノズル形状・推進ロケット',
+          autoIgnite: true,
+          ...buildGroupedPreset([rocket, ...makeFlatTargetTower(740, 825, 6)])
+        };
+      }
+
+      if (key === 'rupture') {
+        // ⑤ 薄肉ケーシング暴発テスト：軽質材で2倍火薬を囲み過圧破壊を観察
+        const weakGun = [
+          ...bandLine(15, 110, 320, 'light'),
+          ...bandLine(14, 110, 320, 'light'),
+          ...bandLine(13, 110, 360, 'light'),
+          ...bandLine(12, 110, 140, 'light'),
+          ...bandLine(11, 110, 140, 'light'),
+          ...bandLine(10, 110, 360, 'light'),
+          ...hexGroup(6, 3, 'energy_pulse'),
+          ...hexGroup(6, 4, 'energy_pulse')
+        ];
+        const heavyPlug = [
+          ...bandLine(12, 275, 330, 'dense'),
+          ...bandLine(11, 275, 330, 'dense')
+        ];
+        return {
+          name: '薄肉ケーシング暴発テスト',
+          autoIgnite: true,
+          ...buildGroupedPreset([weakGun, heavyPlug])
+        };
+      }
+
+      // ⑥ 平板ビーム＆三角支点投石機
+      const fulcrum = [
+        ...bandLine(15, 355, 420, 'dense'),
+        ...bandLine(14, 370, 405, 'dense')
+      ];
+      const beam = bandLine(13, 225, 535, 'light');
+      const payload = hexGroup(5, 10, 'elastic');
+      const counterweight = [
+        ...bandLine(6, 235, 305, 'dense'),
+        ...bandLine(5, 235, 305, 'dense'),
+        ...bandLine(4, 235, 305, 'dense')
+      ];
+      return {
+        name: '平板ビーム＆三角支点投石機',
+        autoIgnite: false,
+        ...buildGroupedPreset([fulcrum, beam, payload, counterweight, ...makeFlatTargetTower(780, 865, 5)])
+      };
+    }
+
+    // =========================================================================
+    // MODULE 9: DOMキャッシュ & ユーティリティ
+    // =========================================================================
+    const el = {
+      canvas: document.getElementById('worldCanvas'),
+      modeBadge: document.getElementById('modeBadge'),
+      costPill: document.getElementById('costPill'),
+      presetSelect: document.getElementById('presetSelect'),
+      btnStartTutorial: document.getElementById('btnStartTutorial'),
+      btnToggleInspector: document.getElementById('btnToggleInspector'),
+      btnCloseInspector: document.getElementById('btnCloseInspector'),
+      inspectorDrawer: document.getElementById('inspectorDrawer'),
+      btnOpenBlueprints: document.getElementById('btnOpenBlueprints'),
+      btnGuide: document.getElementById('btnGuide'),
+      btnMute: document.getElementById('btnMute'),
+      hoverMain: document.getElementById('hoverMain'),
+      hoverSub: document.getElementById('hoverSub'),
+      bondSubBar: document.getElementById('bondSubBar'),
+      btnBondCut: document.getElementById('btnBondCut'),
+      btnBondJoin: document.getElementById('btnBondJoin'),
+      btnBondSplitMat: document.getElementById('btnBondSplitMat'),
+      tutorialCard: document.getElementById('tutorialCard'),
+      tutStepBadge: document.getElementById('tutStepBadge'),
+      tutTitle: document.getElementById('tutTitle'),
+      tutProgressBar: document.getElementById('tutProgressBar'),
+      tutDesc: document.getElementById('tutDesc'),
+      tutStatus: document.getElementById('tutStatus'),
+      tutActions: document.getElementById('tutActions'),
+      btnTutSkipStep: document.getElementById('btnTutSkipStep'),
+      btnExitTutorial: document.getElementById('btnExitTutorial'),
+      simClockPill: document.getElementById('simClockPill'),
+      btnZoomOut: document.getElementById('btnZoomOut'),
+      btnZoomReset: document.getElementById('btnZoomReset'),
+      btnZoomIn: document.getElementById('btnZoomIn'),
+      hintDock: document.getElementById('hintDock'),
+      hintCard: document.getElementById('hintCard'),
+      hintList: document.getElementById('hintList'),
+      btnToggleHint: document.getElementById('btnToggleHint'),
+      btnCloseHintCard: document.getElementById('btnCloseHintCard'),
+      btnToggleHintPin: document.getElementById('btnToggleHintPin'),
+      hintCountBadge: document.getElementById('hintCountBadge'),
+      statArea: document.getElementById('statArea'),
+      statCost: document.getElementById('statCost'),
+      statBodies: document.getElementById('statBodies'),
+      statMass: document.getElementById('statMass'),
+      statDamageCount: document.getElementById('statDamageCount'),
+      statSpeedPeak: document.getElementById('statSpeedPeak'),
+      selectedSpecCard: document.getElementById('selectedSpecCard'),
+      eventLog: document.getElementById('eventLog'),
+      btnClearLog: document.getElementById('btnClearLog'),
+      dockDesign: document.getElementById('dockDesign'),
+      dockSim: document.getElementById('dockSim'),
+      elementChips: document.getElementById('elementChips'),
+      btnToolHex: document.getElementById('btnToolHex'),
+      btnToolTri: document.getElementById('btnToolTri'),
+      btnToolLine: document.getElementById('btnToolLine'),
+      btnToolCarve: document.getElementById('btnToolCarve'),
+      btnToolBond: document.getElementById('btnToolBond'),
+      btnAutoBond: document.getElementById('btnAutoBond'),
+      btnUndo: document.getElementById('btnUndo'),
+      btnClear: document.getElementById('btnClear'),
+      btnAutoIgnite: document.getElementById('btnAutoIgnite'),
+      btnStartSim: document.getElementById('btnStartSim'),
+      btnBackToDesign: document.getElementById('btnBackToDesign'),
+      btnRestartSim: document.getElementById('btnRestartSim'),
+      btnTriggerEnergy: document.getElementById('btnTriggerEnergy'),
+      btnPause: document.getElementById('btnPause'),
+      btnStep: document.getElementById('btnStep'),
+      toastContainer: document.getElementById('toastContainer'),
+      bpModal: document.getElementById('bpModal'),
+      btnCloseBpModal: document.getElementById('btnCloseBpModal'),
+      bpNameInput: document.getElementById('bpNameInput'),
+      btnSaveBp: document.getElementById('btnSaveBp'),
+      bpSlotList: document.getElementById('bpSlotList'),
+      shareCodeText: document.getElementById('shareCodeText'),
+      btnCopyCode: document.getElementById('btnCopyCode'),
+      btnImportCode: document.getElementById('btnImportCode'),
+      guideModal: document.getElementById('guideModal'),
+      btnCloseGuide: document.getElementById('btnCloseGuide')
+    };
+
+    const ctx = el.canvas.getContext('2d');
+
+    function showToast(msg, type = 'info') {
+      const cls = {
+        info: 'bg-slate-800/95 border-cyan-500/50 text-cyan-200',
+        warn: 'bg-amber-950/95 border-amber-500/60 text-amber-200',
+        danger: 'bg-rose-950/95 border-rose-500/60 text-rose-200',
+        success: 'bg-emerald-950/95 border-emerald-500/60 text-emerald-200'
+      };
+      const div = document.createElement('div');
+      div.className = `px-3 py-1.5 rounded-xl border shadow-xl text-xs font-bold backdrop-blur transition-all duration-300 ${cls[type] || cls.info}`;
+      div.textContent = msg;
+      el.toastContainer.appendChild(div);
+      setTimeout(() => {
+        div.style.opacity = '0';
+        div.style.transform = 'translateY(-8px)';
+        setTimeout(() => div.remove(), 260);
+      }, 2400);
+    }
+
+    function appendEventLog(msg, type = 'info', time = 0) {
+      if (el.eventLog.children.length === 1 && el.eventLog.firstElementChild.classList.contains('text-slate-500')) {
+        el.eventLog.innerHTML = '';
+      }
+      const colors = { info: 'text-slate-300', warn: 'text-amber-300', danger: 'text-rose-400 font-bold', success: 'text-emerald-300' };
+      const row = document.createElement('div');
+      row.className = colors[type] || 'text-slate-300';
+      row.textContent = `[${time.toFixed(1)}s] ${msg}`;
+      el.eventLog.prepend(row);
+      while (el.eventLog.children.length > 35) el.eventLog.lastElementChild.remove();
+    }
+    PhysicsEngine.eventListeners.push(appendEventLog);
+
+    // =========================================================================
+    // MODULE 10: 設計グリッド解析・履歴・編集アクション
+    // =========================================================================
+    function cloneTriGrid(grid) {
+      return grid.map(row => row.map(col => [...col]));
+    }
+
+    function pushUndo() {
+      state.history.push({
+        tris: cloneTriGrid(state.tris),
+        severed: new Set(state.severedBonds)
+      });
+      if (state.history.length > 40) state.history.shift();
+    }
+
+    function computeDesignComponents() {
+      const visited = new Set();
+      const compMap = new Map();
+      const comps = [];
+      let triCount = 0;
+      let totalCost = 0;
+      let totalMass = 0;
+
+      for (let r = 0; r < GRID_ROWS; r++) {
+        for (let c = 0; c < GRID_COLS; c++) {
+          for (let t = 0; t < 6; t++) {
+            const matId = state.tris[r][c][t];
+            if (!matId) continue;
+            triCount++;
+            const mat = MATERIALS[matId];
+            totalCost += mat.unitCost / 6;
+            totalMass += mat.density * 0.85;
+
+            const k = TriHexMath.triKey(r, c, t);
+            if (visited.has(k)) continue;
+            const cid = comps.length;
+            const q = [[r, c, t]];
+            visited.add(k);
+            let sx = 0, sy = 0, cnt = 0;
+            while (q.length > 0) {
+              const [cr, cc, ct] = q.shift();
+              compMap.set(TriHexMath.triKey(cr, cc, ct), cid);
+              const cent = TriHexMath.triCentroid(cr, cc, ct);
+              sx += cent.x; sy += cent.y; cnt++;
+              for (const nb of TriHexMath.triNeighbors(cr, cc, ct)) {
+                if (!nb.valid || !state.tris[nb.r][nb.c][nb.t]) continue;
+                if (state.severedBonds.has(TriHexMath.bondKey(cr, cc, ct, nb.r, nb.c, nb.t))) continue;
+                const nk = TriHexMath.triKey(nb.r, nb.c, nb.t);
+                if (!visited.has(nk)) {
+                  visited.add(nk);
+                  q.push([nb.r, nb.c, nb.t]);
+                }
+              }
+            }
+            comps.push({ id: cid, cx: sx / cnt, cy: sy / cnt, count: cnt });
+          }
+        }
+      }
+      return { compMap, comps, triCount, totalCost, totalMass };
+    }
+
+    function placeTriangle(r, c, t, matId, autoBondOverride = null) {
+      if (!TriHexMath.triValid(r, c, t)) return false;
+      const existed = state.tris[r][c][t];
+      if (existed === matId) return false;
+      state.tris[r][c][t] = matId;
+      const shouldBond = autoBondOverride !== null ? autoBondOverride : state.autoBond;
+
+      for (const nb of TriHexMath.triNeighbors(r, c, t)) {
+        if (!nb.valid || !state.tris[nb.r][nb.c][nb.t]) continue;
+        const bk = TriHexMath.bondKey(r, c, t, nb.r, nb.c, nb.t);
+        if (shouldBond) {
+          state.severedBonds.delete(bk);
+        } else {
+          state.severedBonds.add(bk);
+        }
+      }
+      PhysicsAdvisor.clearDesignPinsOnEdit();
+      return true;
+    }
+
+    function removeTriangle(r, c, t) {
+      if (!TriHexMath.triValid(r, c, t) || !state.tris[r][c][t]) return false;
+      state.tris[r][c][t] = null;
+      for (const nb of TriHexMath.triNeighbors(r, c, t)) {
+        if (!nb.valid) continue;
+        state.severedBonds.delete(TriHexMath.bondKey(r, c, t, nb.r, nb.c, nb.t));
+      }
+      PhysicsAdvisor.clearDesignPinsOnEdit();
+      return true;
+    }
+
+    function placeHex(r, c, matId) {
+      let changed = false;
+      const placedKeys = new Set();
+      for (let t = 0; t < 6; t++) {
+        if (!TriHexMath.triValid(r, c, t)) continue;
+        if (state.tris[r][c][t] !== matId) {
+          state.tris[r][c][t] = matId;
+          changed = true;
+        }
+        placedKeys.add(TriHexMath.triKey(r, c, t));
+      }
+      if (!changed) return false;
+
+      // 六角形内部の6辺は常に接続、外周は autoBond に従う
+      for (let t = 0; t < 6; t++) {
+        if (!TriHexMath.triValid(r, c, t)) continue;
+        for (const nb of TriHexMath.triNeighbors(r, c, t)) {
+          if (!nb.valid || !state.tris[nb.r][nb.c][nb.t]) continue;
+          const bk = TriHexMath.bondKey(r, c, t, nb.r, nb.c, nb.t);
+          if (placedKeys.has(TriHexMath.triKey(nb.r, nb.c, nb.t))) {
+            state.severedBonds.delete(bk);
+          } else if (state.autoBond) {
+            state.severedBonds.delete(bk);
+          } else {
+            state.severedBonds.add(bk);
+          }
+        }
+      }
+      PhysicsAdvisor.clearDesignPinsOnEdit();
+      return true;
+    }
+
+    function removeHex(r, c) {
+      let changed = false;
+      for (let t = 0; t < 6; t++) {
+        if (removeTriangle(r, c, t)) changed = true;
+      }
+      return changed;
+    }
+
+    // 設計上の全共有辺を収集（接続ツール用）
+    function collectAllSharedEdges() {
+      const seen = new Set();
+      const edges = [];
+      for (let r = 0; r < GRID_ROWS; r++) {
+        for (let c = 0; c < GRID_COLS; c++) {
+          for (let t = 0; t < 6; t++) {
+            const matA = state.tris[r][c][t];
+            if (!matA) continue;
+            for (const nb of TriHexMath.triNeighbors(r, c, t)) {
+              if (!nb.valid) continue;
+              const matB = state.tris[nb.r][nb.c][nb.t];
+              if (!matB) continue;
+              const bk = TriHexMath.bondKey(r, c, t, nb.r, nb.c, nb.t);
+              if (seen.has(bk)) continue;
+              seen.add(bk);
+              const seg = TriHexMath.triEdgeSegment(r, c, t, nb.edgeIdx);
+              edges.push({
+                key: bk,
+                p1: seg.p1,
+                p2: seg.p2,
+                mx: seg.mx,
+                my: seg.my,
+                diffMat: matA !== matB,
+                severed: state.severedBonds.has(bk)
+              });
+            }
+          }
+        }
+      }
+      return edges;
+    }
+
+    function findNearestSharedEdge(wx, wy, maxDist = 14) {
+      const edges = collectAllSharedEdges();
+      let best = null;
+      let bestScore = Infinity;
+      for (const e of edges) {
+        const d = distToSegment(wx, wy, e.p1.x, e.p1.y, e.p2.x, e.p2.y);
+        if (d <= maxDist) {
+          // 異素材境界を優先吸着
+          const score = d - (e.diffMat ? 3.5 : 0);
+          if (score < bestScore) {
+            bestScore = score;
+            best = e;
+          }
+        }
+      }
+      return best;
+    }
+
+    function applyBondKnifeSegment(x1, y1, x2, y2, action) {
+      const sdx = x2 - x1, sdy = y2 - y1;
+      const sLen = Math.hypot(sdx, sdy);
+      if (sLen < 1.5) return 0;
+      const sux = sdx / sLen, suy = sdy / sLen;
+      const edges = collectAllSharedEdges();
+      let changed = 0;
+
+      for (const e of edges) {
+        if (state.bondHitKeys.has(e.key)) continue;
+        // 1) 線分交差（境界をスパッと横切る）
+        const crossed = segmentsIntersect(x1, y1, x2, y2, e.p1.x, e.p1.y, e.p2.x, e.p2.y);
+        // 2) 平行なぞり（境界に沿ってなぞった時だけ平行な辺を拾い、直交する内部辺の誤爆を防ぐ）
+        let parallelHit = false;
+        if (!crossed) {
+          const dMid = distToSegment(e.mx, e.my, x1, y1, x2, y2);
+          if (dMid <= 7.5) {
+            const edx = e.p2.x - e.p1.x, edy = e.p2.y - e.p1.y;
+            const eLen = Math.hypot(edx, edy) || 1;
+            const dot = Math.abs((edx / eLen) * sux + (edy / eLen) * suy);
+            if (dot > 0.72) parallelHit = true;
+          }
+        }
+        if (crossed || parallelHit) {
+          state.bondHitKeys.add(e.key);
+          const wantCut = action === 'cut';
+          if (wantCut && !state.severedBonds.has(e.key)) {
+            state.severedBonds.add(e.key);
+            changed++;
+            state.bondSparks.push({ x: e.mx, y: e.my, color: '#fb7185', age: 0, life: 0.35 });
+          } else if (!wantCut && state.severedBonds.has(e.key)) {
+            state.severedBonds.delete(e.key);
+            changed++;
+            state.bondSparks.push({ x: e.mx, y: e.my, color: '#34d399', age: 0, life: 0.35 });
+          }
+        }
+      }
+      if (changed > 0) {
+        SoundFX.slice(action === 'cut');
+        PhysicsAdvisor.clearDesignPinsOnEdit();
+        updateTelemetryHUD();
+        TutorialMgr.checkProgress();
+      }
+      return changed;
+    }
+
+    function splitAllDifferentMaterialBonds() {
+      pushUndo();
+      const edges = collectAllSharedEdges();
+      let count = 0;
+      for (const e of edges) {
+        if (e.diffMat && !state.severedBonds.has(e.key)) {
+          state.severedBonds.add(e.key);
+          state.bondSparks.push({ x: e.mx, y: e.my, color: '#fbbf24', age: 0, life: 0.45 });
+          count++;
+        }
+      }
+      if (count > 0) {
+        SoundFX.slice(true);
+        showToast(`異素材の境界 ${count} 辺を一括分離しました！`, 'success');
+        updateTelemetryHUD();
+        TutorialMgr.checkProgress();
+      } else {
+        showToast('分離できる異素材境界がありません。', 'info');
+      }
+    }
+
+    // =========================================================================
+    // MODULE 11: TutorialMgr — 操作感を体得する5ステップ実践チュートリアル
+    // =========================================================================
+    const TutorialMgr = {
+      active: false,
+      step: 0, // 0..4, 5=完了
+      targetTopWall: [],
+      chamberHex: { r: 6, c: 2 },
+      noseTris: [[6, 5, 0], [6, 5, 5]],
+      shellKeys: new Set(),
+
+      start() {
+        this.active = true;
+        this.step = 0;
+        if (state.mode === 'sim') switchMode('design');
+        resetCamera();
+        PhysicsAdvisor.reset(true);
+
+        // STEP 1 用ベース構造：上壁と火薬だけが抜けている平滑バレル砲
+        const baseGun = [
+          ...bandLine(15, 75, 295, 'dense'),
+          ...bandLine(14, 75, 295, 'dense'),
+          ...bandLine(13, 75, 365, 'dense'),
+          ...bandLine(12, 75, 130, 'dense'),
+          ...bandLine(11, 75, 130, 'dense')
+        ];
+        const baseShell = [
+          ...bandLine(12, 200, 260, 'slick'),
+          ...bandLine(11, 200, 260, 'slick')
+        ];
+        // 最初はあえて砲身と弾を1グループ（くっついた状態）にして STEP 4 で切り離させる
+        const combined = [...baseGun, ...baseShell];
+        const built = buildGroupedPreset([combined, ...makeFlatTargetTower(765, 855, 7)]);
+        state.tris = built.tris;
+        state.severedBonds = built.severed;
+        state.autoIgnite = true;
+        state.currentName = 'チュートリアル初号機';
+
+        this.targetTopWall = bandLine(10, 75, 365, 'dense');
+        this.shellKeys = new Set(baseShell.map(([r, c, t]) => TriHexMath.triKey(r, c, t)));
+        this.noseTris.forEach(([r, c, t]) => this.shellKeys.add(TriHexMath.triKey(r, c, t)));
+
+        state.selectedMat = 'dense';
+        state.tool = 'line';
+        syncMatChipsUI();
+        syncToolUI();
+        updateTelemetryHUD();
+        this.renderUI();
+        SoundFX.click(640);
+      },
+
+      stop() {
+        this.active = false;
+        el.tutorialCard.classList.add('hidden');
+        this.clearHighlights();
+      },
+
+      clearHighlights() {
+        document.querySelectorAll('.tut-highlight').forEach(node => node.classList.remove('tut-highlight'));
+      },
+
+      advanceStep(skipped = false) {
+        if (!this.active) return;
+        // スキップされたステップの未完了部分を自動補完して次へ繋ぐ
+        if (skipped) {
+          if (this.step === 0) {
+            for (const [r, c, t, m] of this.targetTopWall) placeTriangle(r, c, t, m, true);
+          } else if (this.step === 1) {
+            placeHex(this.chamberHex.r, this.chamberHex.c, 'energy_pulse');
+          } else if (this.step === 2) {
+            for (const [r, c, t] of this.noseTris) placeTriangle(r, c, t, 'dense', true);
+          } else if (this.step === 3) {
+            for (const e of collectAllSharedEdges()) {
+              if (e.diffMat) state.severedBonds.add(e.key);
+            }
+          }
+        }
+
+        this.step++;
+        SoundFX.chime();
+        if (this.step === 1) {
+          state.selectedMat = 'energy_pulse';
+          state.tool = 'hex';
+        } else if (this.step === 2) {
+          state.selectedMat = 'dense';
+          state.tool = 'tri';
+        } else if (this.step === 3) {
+          state.tool = 'bond';
+          state.bondSubMode = 'cut';
+        }
+        syncMatChipsUI();
+        syncToolUI();
+        updateTelemetryHUD();
+        this.renderUI();
+      },
+
+      checkProgress() {
+        if (!this.active) return;
+        if (this.step === 0) {
+          let filled = 0;
+          for (const [r, c, t] of this.targetTopWall) {
+            if (state.tris[r][c][t]) filled++;
+          }
+          const pct = Math.round((filled / Math.max(1, this.targetTopWall.length)) * 100);
+          el.tutStatus.textContent = `上壁の描画: ${pct}%`;
+          if (pct >= 75) this.advanceStep(false);
+        } else if (this.step === 1) {
+          const { r, c } = this.chamberHex;
+          let filled = 0;
+          for (let t = 0; t < 6; t++) {
+            if (state.tris[r][c][t] === 'energy_pulse' || state.tris[r][c][t] === 'energy_sustained') filled++;
+          }
+          el.tutStatus.textContent = `火薬の装填: ${filled}/6△`;
+          if (filled >= 4) this.advanceStep(false);
+        } else if (this.step === 2) {
+          let filled = 0;
+          for (const [r, c, t] of this.noseTris) {
+            if (state.tris[r][c][t]) filled++;
+          }
+          el.tutStatus.textContent = `先端ノーズ造形: ${filled}/2△`;
+          if (filled >= 2) this.advanceStep(false);
+        } else if (this.step === 3) {
+          // 弾丸と砲身が別剛体になっているかチェック
+          const { compMap } = computeDesignComponents();
+          const barrelComp = compMap.get(TriHexMath.triKey(7, 2, 1)) ?? compMap.get(TriHexMath.triKey(7, 3, 4));
+          const shellComp = compMap.get(TriHexMath.triKey(6, 4, 0)) ?? compMap.get(TriHexMath.triKey(6, 4, 1));
+          const separated = barrelComp !== undefined && shellComp !== undefined && barrelComp !== shellComp;
+          el.tutStatus.textContent = separated ? '切り離し完了！' : '弾と砲身がまだ接続されています';
+          if (separated) this.advanceStep(false);
+        } else if (this.step === 4) {
+          if (state.mode === 'sim') {
+            this.step = 5;
+            SoundFX.chime();
+            this.renderUI();
+          }
+        }
+      },
+
+      renderUI() {
+        if (!this.active) return;
+        el.tutorialCard.classList.remove('hidden');
+        this.clearHighlights();
+
+        const steps = [
+          {
+            badge: 'STEP 1/5', pct: 20,
+            title: '「╱ 直線」で平らな砲身上壁を引こう',
+            desc: 'ツール <b>「╱ 直線」</b> を選び、キャンバス上で光る緑の帯を<b>左から右へドラッグ</b>すると、凹凸のない一直線の壁が一気に描けます。'
+          },
+          {
+            badge: 'STEP 2/5', pct: 40,
+            title: '「⬡ 六角」で火薬を仕込もう',
+            desc: '素材 <b>「火薬」</b> とツール <b>「⬡ 六角」</b> を選び、囲いの中の光る六角セルをクリックして配置しよう（起爆すると高圧を放出して消滅します）。'
+          },
+          {
+            badge: 'STEP 3/5', pct: 60,
+            title: '「△ 三角」で先端を尖らせよう',
+            desc: '砲身内に弾を置きました！ツール <b>「△ 三角」</b> を選び、弾の右端で光る<b>2つの正三角形</b>をクリックして鋭角ノーズに造形しよう（右クリックや ✂削り で微調整も可能）。'
+          },
+          {
+            badge: 'STEP 4/5', pct: 80,
+            title: '「🔗 接続」で弾を砲身から切り離そう',
+            desc: '今は弾と砲身がくっついたままです。<b>「🔗 接続」</b>を選び、光る<b>境界線をナイフのように横切る（またはなぞる）</b>とスパッと赤い線に分離されます！（左上の「⚡異素材を一括分離」も使えます）'
+          },
+          {
+            badge: 'STEP 5/5', pct: 95,
+            title: '「▶ 実行」で物理法則を観察しよう！',
+            desc: '完成です！右下の <b>「▶ 実行」</b>（または <b>SPACE</b>）を押すと、火薬が起爆して消滅し、発生した圧力で弾だけが加速して右のタワーを吹き飛ばします！'
+          },
+          {
+            badge: 'COMPLETE!', pct: 100,
+            title: 'チュートリアル完了！自由に発明しよう',
+            desc: '基本操作をマスターしました！上部の <b>🧪サンプル</b> で跳弾砲や推進ロケット、投石機も観察し、自分だけの物理兵器を発明してみてください。'
+          }
+        ];
+
+        const info = steps[Math.min(this.step, steps.length - 1)];
+        el.tutStepBadge.textContent = info.badge;
+        el.tutTitle.textContent = info.title;
+        el.tutProgressBar.style.width = `${info.pct}%`;
+        el.tutDesc.innerHTML = info.desc;
+
+        if (this.step >= 5) {
+          el.tutStatus.textContent = '全ステップ達成！';
+          el.btnTutSkipStep.textContent = '閉じる';
+        } else {
+          el.btnTutSkipStep.textContent = '次へスキップ';
+          // 押すべきUIボタンを強調
+          if (this.step === 0) el.btnToolLine.classList.add('tut-highlight');
+          else if (this.step === 1) {
+            el.btnToolHex.classList.add('tut-highlight');
+            const chip = el.elementChips.querySelector('[data-mat="energy_pulse"]');
+            if (chip) chip.classList.add('tut-highlight');
+          } else if (this.step === 2) el.btnToolTri.classList.add('tut-highlight');
+          else if (this.step === 3) {
+            el.btnToolBond.classList.add('tut-highlight');
+            el.btnBondSplitMat.classList.add('tut-highlight');
+          } else if (this.step === 4) el.btnStartSim.classList.add('tut-highlight');
+        }
+      },
+
+      drawOverlay(timeSec) {
+        if (!this.active || state.mode !== 'design' || this.step >= 4) return;
+        const pulse = 0.5 + 0.5 * Math.sin(timeSec * 6);
+        ctx.save();
+
+        if (this.step === 0) {
+          // STEP 1: 上壁ガイド帯＋ドラッグ矢印
+          for (const [r, c, t] of this.targetTopWall) {
+            if (state.tris[r][c][t]) continue;
+            traceTriVerts(TriHexMath.triVertices(r, c, t));
+            ctx.fillStyle = `rgba(52, 211, 153, ${0.18 + pulse * 0.22})`;
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(52, 211, 153, 0.75)';
+            ctx.lineWidth = 1.2;
+            ctx.stroke();
+          }
+          const yMid = GRID_OY + 10.5 * HEX_H;
+          ctx.strokeStyle = '#34d399';
+          ctx.lineWidth = 3;
+          ctx.setLineDash([7, 5]);
+          ctx.lineDashOffset = -timeSec * 40;
+          ctx.beginPath();
+          ctx.moveTo(85, yMid);
+          ctx.lineTo(355, yMid);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.fillStyle = '#a7f3d0';
+          ctx.font = 'bold 11px "Noto Sans JP", sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText('ここから右へドラッグ ➔', 220, yMid - 18);
+          ctx.textAlign = 'left';
+        } else if (this.step === 1) {
+          // STEP 2: 薬室の光る六角セル
+          const ctr = TriHexMath.hexCenter(this.chamberHex.r, this.chamberHex.c);
+          traceFlatHex(ctr.x, ctr.y, HEX_R - 1);
+          ctx.fillStyle = `rgba(251, 113, 133, ${0.22 + pulse * 0.28})`;
+          ctx.fill();
+          ctx.strokeStyle = '#fb7185';
+          ctx.lineWidth = 3;
+          ctx.stroke();
+          ctx.font = 'bold 11px "Noto Sans JP", sans-serif';
+          ctx.fillStyle = '#fecdd3';
+          ctx.textAlign = 'center';
+          ctx.fillText('ここに火薬をクリック', ctr.x, ctr.y - HEX_R - 8);
+          ctx.textAlign = 'left';
+        } else if (this.step === 2) {
+          // STEP 3: 楔ノーズの2三角形
+          for (const [r, c, t] of this.noseTris) {
+            if (state.tris[r][c][t]) continue;
+            traceTriVerts(TriHexMath.triVertices(r, c, t));
+            ctx.fillStyle = `rgba(251, 191, 36, ${0.25 + pulse * 0.3})`;
+            ctx.fill();
+            ctx.strokeStyle = '#fbbf24';
+            ctx.lineWidth = 2.6;
+            ctx.stroke();
+          }
+          const pt = TriHexMath.hexCenter(6, 5);
+          ctx.font = 'bold 11px "Noto Sans JP", sans-serif';
+          ctx.fillStyle = '#fef08a';
+          ctx.textAlign = 'center';
+          ctx.fillText('光る2△をクリック', pt.x + 15, pt.y - 34);
+          ctx.textAlign = 'left';
+        } else if (this.step === 3) {
+          // STEP 4: 弾と砲身の境界を光らせる
+          for (const e of collectAllSharedEdges()) {
+            if (!e.diffMat || e.severed) continue;
+            ctx.strokeStyle = `rgba(251, 191, 36, ${0.5 + pulse * 0.5})`;
+            ctx.lineWidth = 4.5;
+            ctx.beginPath();
+            ctx.moveTo(e.p1.x, e.p1.y);
+            ctx.lineTo(e.p2.x, e.p2.y);
+            ctx.stroke();
+          }
+          ctx.font = 'bold 11px "Noto Sans JP", sans-serif';
+          ctx.fillStyle = '#67e8f9';
+          ctx.textAlign = 'center';
+          ctx.fillText('光る境界線を横切って切断！', 230, GRID_OY + 9.2 * HEX_H);
+          ctx.textAlign = 'left';
+        }
+        ctx.restore();
+      }
+    };
+
+    // =========================================================================
+    // MODULE 12: カメラ座標変換＆レンダリングエンジン
+    // =========================================================================
+    let viewTransform = { scale: 1, ox: 0, oy: 0 };
+
+    function updateCanvasTransform() {
+      const rect = el.canvas.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) return;
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const tw = Math.floor(rect.width * dpr);
+      const th = Math.floor(rect.height * dpr);
+      if (el.canvas.width !== tw || el.canvas.height !== th) {
+        el.canvas.width = tw;
+        el.canvas.height = th;
+      }
+
+      const baseScale = Math.min(rect.width / WORLD_W, rect.height / WORLD_H);
+      const scale = baseScale * state.cam.zoom;
+      const ox = (rect.width - WORLD_W * scale) * 0.5 + state.cam.panX;
+      const oy = (rect.height - WORLD_H * scale) * 0.5 + state.cam.panY;
+      viewTransform = { scale, ox, oy };
+
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, tw, th);
+      ctx.setTransform(scale * dpr, 0, 0, scale * dpr, ox * dpr, oy * dpr);
+    }
+
+    function screenToWorld(clientX, clientY) {
+      const rect = el.canvas.getBoundingClientRect();
+      return {
+        x: (clientX - rect.left - viewTransform.ox) / viewTransform.scale,
+        y: (clientY - rect.top - viewTransform.oy) / viewTransform.scale
+      };
+    }
+
+    function setZoom(newZoom, pivotClientX = null, pivotClientY = null) {
+      const clamped = Math.max(0.75, Math.min(2.8, newZoom));
+      if (pivotClientX !== null && pivotClientY !== null) {
+        const before = screenToWorld(pivotClientX, pivotClientY);
+        state.cam.zoom = clamped;
+        const rect = el.canvas.getBoundingClientRect();
+        const baseScale = Math.min(rect.width / WORLD_W, rect.height / WORLD_H);
+        const nextScale = baseScale * clamped;
+        const baseOx = (rect.width - WORLD_W * nextScale) * 0.5;
+        const baseOy = (rect.height - WORLD_H * nextScale) * 0.5;
+        state.cam.panX = (pivotClientX - rect.left) - before.x * nextScale - baseOx;
+        state.cam.panY = (pivotClientY - rect.top) - before.y * nextScale - baseOy;
+      } else {
+        state.cam.zoom = clamped;
+      }
+      el.btnZoomReset.textContent = `${Math.round(state.cam.zoom * 100)}%`;
+    }
+
+    function resetCamera() {
+      state.cam.zoom = 1;
+      state.cam.panX = 0;
+      state.cam.panY = 0;
+      el.btnZoomReset.textContent = '100%';
+    }
+
+    function traceFlatHex(cx, cy, r) {
+      ctx.beginPath();
+      for (let k = 0; k < 6; k++) {
+        const px = cx + Math.cos((Math.PI / 3) * k) * r;
+        const py = cy + Math.sin((Math.PI / 3) * k) * r;
+        if (k === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+      ctx.closePath();
+    }
+
+    function traceTriVerts(v) {
+      ctx.beginPath();
+      ctx.moveTo(v[0].x, v[0].y);
+      ctx.lineTo(v[1].x, v[1].y);
+      ctx.lineTo(v[2].x, v[2].y);
+      ctx.closePath();
+    }
+
+    const COMP_COLORS = ['#22d3ee', '#fbbf24', '#a78bfa', '#34d399', '#fb7185', '#60a5fa', '#f472b6', '#facc15'];
+
+    function drawWorld(timeSec) {
+      updateCanvasTransform();
+
+      // 1. 背景＆床
+      const bg = ctx.createLinearGradient(0, 0, 0, WORLD_H);
+      bg.addColorStop(0, '#050a14');
+      bg.addColorStop(0.85, '#0b1424');
+      bg.addColorStop(1, '#111c30');
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, WORLD_W, WORLD_H);
+
+      // 地面
+      ctx.fillStyle = '#182235';
+      ctx.fillRect(0, GROUND_Y, WORLD_W, WORLD_H - GROUND_Y);
+      ctx.strokeStyle = '#475569';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(0, GROUND_Y);
+      ctx.lineTo(WORLD_W, GROUND_Y);
+      ctx.stroke();
+
+      // 距離目盛り
+      ctx.fillStyle = 'rgba(148, 163, 184, 0.36)';
+      ctx.font = '10px JetBrains Mono';
+      for (let x = 100; x < WORLD_W; x += 100) {
+        ctx.fillText(`${x}px`, x - 14, GROUND_Y + 18);
+      }
+
+      // 2. 第2層：六角圧力フィールドの可視化
+      if (state.vis.field && state.mode === 'sim') {
+        for (let r = 0; r < GRID_ROWS; r++) {
+          for (let c = 0; c < GRID_COLS; c++) {
+            const e = FieldEngine.energy[TriHexMath.hexIndex(r, c)];
+            if (e < 1.2) continue;
+            const norm = Math.min(1, e / 135);
+            const ctr = TriHexMath.hexCenter(r, c);
+            traceFlatHex(ctr.x, ctr.y, HEX_R - 0.5);
+            const g = Math.round(215 * (1 - norm * 0.72));
+            const b = Math.round(70 * (1 - norm));
+            ctx.fillStyle = `rgba(255, ${g}, ${b}, ${0.14 + norm * 0.62})`;
+            ctx.fill();
+          }
+        }
+      }
+
+      // 3. 設計モード描画 OR シミュレーションモード描画
+      if (state.mode === 'design') {
+        drawDesignLayer(timeSec);
+      } else {
+        drawSimulationLayer(timeSec);
+      }
+
+      // 4. 物理観測メモの原因箇所ピンハイライト
+      if (PhysicsAdvisor.showPins && PhysicsAdvisor.markers.length > 0 && (state.mode === 'sim' || PhysicsAdvisor.hasLastDesignHints)) {
+        const pulse = 0.5 + 0.5 * Math.sin(timeSec * 6.5);
+        const alphaMult = state.mode === 'design' ? 0.58 : 0.95;
+        for (const mk of PhysicsAdvisor.markers) {
+          ctx.save();
+          ctx.globalAlpha = alphaMult;
+          ctx.strokeStyle = mk.color;
+          ctx.lineWidth = 2.4;
+          ctx.beginPath();
+          ctx.arc(mk.x, mk.y, 14 + pulse * 9, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.fillStyle = mk.color;
+          ctx.beginPath();
+          ctx.arc(mk.x, mk.y, 3.5, 0, Math.PI * 2);
+          ctx.fill();
+          if (mk.label) {
+            ctx.font = 'bold 10px "Noto Sans JP", sans-serif';
+            const tw = ctx.measureText(mk.label).width;
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
+            ctx.beginPath();
+            ctx.roundRect(mk.x - tw / 2 - 5, mk.y - 31, tw + 10, 16, 4);
+            ctx.fill();
+            ctx.fillStyle = mk.color;
+            ctx.textAlign = 'center';
+            ctx.fillText(mk.label, mk.x, mk.y - 19);
+            ctx.textAlign = 'left';
+          }
+          ctx.restore();
+        }
+      }
+
+      // 5. チュートリアルガイドオーバーレイ
+      TutorialMgr.drawOverlay(timeSec);
+    }
+
+    function drawDesignLayer(timeSec) {
+      // 薄い六角グリッド背景（△/╱/✂時は三角形補助線も表示）
+      const showSubGrid = state.vis.mesh || state.tool === 'tri' || state.tool === 'line' || state.tool === 'carve';
+      ctx.lineWidth = 0.9;
+      for (let r = 0; r < GRID_ROWS; r++) {
+        for (let c = 0; c < GRID_COLS; c++) {
+          const ctr = TriHexMath.hexCenter(r, c);
+          if (ctr.y - HEX_H > GROUND_Y) continue;
+          traceFlatHex(ctr.x, ctr.y, HEX_R);
+          ctx.strokeStyle = 'rgba(56, 189, 248, 0.11)';
+          ctx.stroke();
+
+          if (showSubGrid) {
+            ctx.strokeStyle = 'rgba(56, 189, 248, 0.065)';
+            ctx.beginPath();
+            for (let k = 0; k < 3; k++) {
+              ctx.moveTo(ctr.x + HEX_VERTS[k].x, ctr.y + HEX_VERTS[k].y);
+              ctx.lineTo(ctr.x + HEX_VERTS[k + 3].x, ctr.y + HEX_VERTS[k + 3].y);
+            }
+            ctx.stroke();
+          }
+        }
+      }
+
+      const compInfo = state.tool === 'bond' ? computeDesignComponents() : null;
+
+      // 配置済み三角形の塗りつぶし
+      for (let r = 0; r < GRID_ROWS; r++) {
+        for (let c = 0; c < GRID_COLS; c++) {
+          for (let t = 0; t < 6; t++) {
+            const matId = state.tris[r][c][t];
+            if (!matId) continue;
+            const mat = MATERIALS[matId];
+            const v = TriHexMath.triVertices(r, c, t);
+            traceTriVerts(v);
+            ctx.fillStyle = mat.color;
+            ctx.fill();
+            if (state.vis.mesh) {
+              ctx.strokeStyle = 'rgba(255,255,255,0.16)';
+              ctx.lineWidth = 0.7;
+              ctx.stroke();
+            }
+          }
+        }
+      }
+
+      // 外周輪郭＆接続・分離境界線（同一素材で接続された三角形は輪郭統合）
+      for (let r = 0; r < GRID_ROWS; r++) {
+        for (let c = 0; c < GRID_COLS; c++) {
+          for (let t = 0; t < 6; t++) {
+            const matId = state.tris[r][c][t];
+            if (!matId) continue;
+            const mat = MATERIALS[matId];
+            const v = TriHexMath.triVertices(r, c, t);
+            const nbs = TriHexMath.triNeighbors(r, c, t);
+            const cid = compInfo ? compInfo.compMap.get(TriHexMath.triKey(r, c, t)) : 0;
+
+            for (const nb of nbs) {
+              const p1 = v[nb.edgeIdx];
+              const p2 = v[(nb.edgeIdx + 1) % 3];
+              const nbMat = nb.valid ? state.tris[nb.r][nb.c][nb.t] : null;
+              if (!nbMat) {
+                // 外周エッジ
+                ctx.strokeStyle = compInfo ? COMP_COLORS[cid % COMP_COLORS.length] : mat.accent;
+                ctx.lineWidth = compInfo ? 2.4 : 1.7;
+                ctx.beginPath();
+                ctx.moveTo(p1.x, p1.y);
+                ctx.lineTo(p2.x, p2.y);
+                ctx.stroke();
+              } else {
+                const bk = TriHexMath.bondKey(r, c, t, nb.r, nb.c, nb.t);
+                const isSevered = state.severedBonds.has(bk);
+                if (isSevered) {
+                  // 未接続（分離境界）：はっきり赤い破線で可視化
+                  ctx.strokeStyle = '#fb7185';
+                  ctx.lineWidth = state.tool === 'bond' ? 3.2 : 2.2;
+                  ctx.setLineDash([4, 3]);
+                  ctx.beginPath();
+                  ctx.moveTo(p1.x, p1.y);
+                  ctx.lineTo(p2.x, p2.y);
+                  ctx.stroke();
+                  ctx.setLineDash([]);
+                } else if (matId !== nbMat) {
+                  // 異素材が接続されている境目
+                  ctx.strokeStyle = state.vis.bonds || state.tool === 'bond' ? '#22d3ee' : 'rgba(226,232,240,0.45)';
+                  ctx.lineWidth = state.tool === 'bond' ? 2.4 : 1.5;
+                  ctx.beginPath();
+                  ctx.moveTo(p1.x, p1.y);
+                  ctx.lineTo(p2.x, p2.y);
+                  ctx.stroke();
+                } else if (state.tool === 'bond') {
+                  // 接続ツール時は同素材間の接続線も薄く表示
+                  ctx.strokeStyle = 'rgba(34, 211, 238, 0.25)';
+                  ctx.lineWidth = 1;
+                  ctx.beginPath();
+                  ctx.moveTo(p1.x, p1.y);
+                  ctx.lineTo(p2.x, p2.y);
+                  ctx.stroke();
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // 接続ツール選択中：独立剛体ごとのバッジ (#1, #2...)
+      if (compInfo) {
+        for (const comp of compInfo.comps) {
+          const col = COMP_COLORS[comp.id % COMP_COLORS.length];
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
+          ctx.strokeStyle = col;
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.roundRect(comp.cx - 14, comp.cy - 9, 28, 18, 5);
+          ctx.fill();
+          ctx.stroke();
+          ctx.fillStyle = col;
+          ctx.font = 'bold 10px JetBrains Mono';
+          ctx.textAlign = 'center';
+          ctx.fillText(`#${comp.id + 1}`, comp.cx, comp.cy + 3.5);
+          ctx.textAlign = 'left';
+        }
+      }
+
+      // 火薬・推進剤アイコン（六角内に中央マーカー）
+      for (let r = 0; r < GRID_ROWS; r++) {
+        for (let c = 0; c < GRID_COLS; c++) {
+          let eKind = null, cnt = 0;
+          for (let t = 0; t < 6; t++) {
+            const mId = state.tris[r][c][t];
+            if (mId && MATERIALS[mId].kind === 'energy') { eKind = mId; cnt++; }
+          }
+          if (eKind && cnt >= 3) {
+            const ctr = TriHexMath.hexCenter(r, c);
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+            ctx.font = 'bold 9px "Noto Sans JP", sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(MATERIALS[eKind].short, ctr.x, ctr.y + 3);
+            ctx.textAlign = 'left';
+          }
+        }
+      }
+
+      // ホバー＆直線描画プレビュー
+      if (state.tool === 'hex' && state.hoverHex) {
+        const ctr = TriHexMath.hexCenter(state.hoverHex.r, state.hoverHex.c);
+        const m = MATERIALS[state.selectedMat];
+        traceFlatHex(ctr.x, ctr.y, HEX_R - 1);
+        ctx.fillStyle = 'rgba(251, 191, 36, 0.16)';
+        ctx.fill();
+        ctx.strokeStyle = m.accent;
+        ctx.lineWidth = 2.2;
+        ctx.stroke();
+      } else if ((state.tool === 'tri' || state.tool === 'carve') && state.hoverTri) {
+        const ht = state.hoverTri;
+        const v = TriHexMath.triVertices(ht.r, ht.c, ht.t);
+        traceTriVerts(v);
+        ctx.fillStyle = state.tool === 'carve' ? 'rgba(251, 113, 133, 0.28)' : 'rgba(251, 191, 36, 0.28)';
+        ctx.fill();
+        ctx.strokeStyle = state.tool === 'carve' ? '#fb7185' : '#fbbf24';
+        ctx.lineWidth = 2.2;
+        ctx.stroke();
+      } else if (state.tool === 'line') {
+        if (state.linePreview.length > 0) {
+          const m = MATERIALS[state.selectedMat];
+          for (const [r, c, t] of state.linePreview) {
+            traceTriVerts(TriHexMath.triVertices(r, c, t));
+            ctx.fillStyle = 'rgba(52, 211, 153, 0.32)';
+            ctx.fill();
+            ctx.strokeStyle = m.accent;
+            ctx.lineWidth = 1.6;
+            ctx.stroke();
+          }
+          if (state.lineStart && state.lineEnd) {
+            ctx.strokeStyle = '#34d399';
+            ctx.lineWidth = 2.4;
+            ctx.setLineDash([6, 4]);
+            ctx.beginPath();
+            ctx.moveTo(state.lineStart.x, state.lineStart.y);
+            ctx.lineTo(state.lineEnd.x, state.lineEnd.y);
+            ctx.stroke();
+            ctx.setLineDash([]);
+          }
+        } else if (state.hoverTri) {
+          const ht = state.hoverTri;
+          traceTriVerts(TriHexMath.triVertices(ht.r, ht.c, ht.t));
+          ctx.fillStyle = 'rgba(52, 211, 153, 0.22)';
+          ctx.fill();
+          ctx.strokeStyle = '#34d399';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        }
+      } else if (state.tool === 'bond' && state.hoverEdge && !state.bondDragMoved) {
+        const e = state.hoverEdge;
+        ctx.strokeStyle = e.severed ? '#34d399' : '#fb7185';
+        ctx.lineWidth = 4.2;
+        ctx.beginPath();
+        ctx.moveTo(e.p1.x, e.p1.y);
+        ctx.lineTo(e.p2.x, e.p2.y);
+        ctx.stroke();
+      }
+
+      // ナイフ切断ストローク＆火花
+      if (state.bondDragActive && state.bondStroke.length > 1) {
+        ctx.strokeStyle = state.bondDragAction === 'cut' ? '#fb7185' : '#34d399';
+        ctx.lineWidth = 3;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        state.bondStroke.forEach((pt, idx) => idx === 0 ? ctx.moveTo(pt.x, pt.y) : ctx.lineTo(pt.x, pt.y));
+        ctx.stroke();
+      }
+      for (const sp of state.bondSparks) {
+        const a = Math.max(0, 1 - sp.age / sp.life);
+        ctx.strokeStyle = sp.color;
+        ctx.globalAlpha = a;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(sp.x, sp.y, 4 + (1 - a) * 14, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    function drawSimulationLayer() {
+      // 剛体ごとの三角形＆結合輪郭を描画
+      for (const body of PhysicsEngine.bodies) {
+        for (const tr of body.tris) {
+          if (tr.hp <= 0 || tr.consumed) continue;
+          const mat = MATERIALS[tr.matId];
+          traceTriVerts(tr.wv);
+          ctx.fillStyle = tr.hitFlash > 0.25 ? '#ffffff' : mat.color;
+          ctx.fill();
+
+          if (mat.kind === 'energy' && tr.ignited && tr.energyLeft > 0) {
+            ctx.fillStyle = 'rgba(253, 224, 71, 0.55)';
+            ctx.fill();
+          }
+
+          // 損傷オーバーレイ
+          if (state.vis.damage && tr.hp < tr.maxHp * 0.92) {
+            const dmgRatio = 1 - Math.max(0, tr.hp / tr.maxHp);
+            ctx.fillStyle = `rgba(244, 63, 94, ${dmgRatio * 0.65})`;
+            ctx.fill();
+          }
+
+          if (state.vis.mesh) {
+            ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+            ctx.lineWidth = 0.7;
+            ctx.stroke();
+          }
+        }
+
+        // 外周エッジのみ描く（結合ブロックの綺麗なシルエット）
+        for (const tr of body.tris) {
+          if (tr.hp <= 0 || tr.consumed) continue;
+          const mat = MATERIALS[tr.matId];
+          for (let eIdx = 0; eIdx < 3; eIdx++) {
+            if (!tr.exposed[eIdx]) continue;
+            const p1 = tr.wv[eIdx];
+            const p2 = tr.wv[(eIdx + 1) % 3];
+            ctx.strokeStyle = mat.accent;
+            ctx.lineWidth = 1.65;
+            ctx.beginPath();
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.stroke();
+          }
+        }
+
+        // 接続負荷の可視化
+        if (state.vis.bonds) {
+          for (const bond of body.bonds) {
+            const tA = body.tris[bond.a];
+            const tB = body.tris[bond.b];
+            if (tA.hp <= 0 || tB.hp <= 0 || tA.consumed || tB.consumed) continue;
+            if (bond.damage > 1) {
+              const ratio = Math.min(1, bond.damage / bond.maxStress);
+              ctx.strokeStyle = `rgba(251, 113, 133, ${0.35 + ratio * 0.65})`;
+              ctx.lineWidth = 1.5 + ratio * 2;
+              ctx.beginPath();
+              ctx.moveTo(tA.wx, tA.wy);
+              ctx.lineTo(tB.wx, tB.wy);
+              ctx.stroke();
+            }
+          }
+        }
+
+        // 移動速度ベクトル可視化
+        if (state.vis.velocity) {
+          const spd = Math.hypot(body.vx, body.vy);
+          if (spd > 15) {
+            const scale = 0.18;
+            ctx.strokeStyle = '#38bdf8';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(body.x, body.y);
+            ctx.lineTo(body.x + body.vx * scale, body.y + body.vy * scale);
+            ctx.stroke();
+          }
+        }
+      }
+
+      // 衝突スパーク可視化
+      if (state.vis.contacts) {
+        for (const ct of PhysicsEngine.contacts) {
+          ctx.strokeStyle = '#fde047';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(ct.x, ct.y, 6 + ct.power * 10, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      }
+
+      // パーティクル
+      for (const pt of PhysicsEngine.particles) {
+        const a = Math.max(0, 1 - pt.age / pt.life);
+        ctx.globalAlpha = a;
+        ctx.fillStyle = pt.color;
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, pt.size * (0.4 + 0.6 * a), 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    // =========================================================================
+    // MODULE 13: UI同期・ブループリント保存＆共有
+    // =========================================================================
+    function buildElementChips() {
+      el.elementChips.innerHTML = '';
+      Object.values(MATERIALS).forEach(m => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.dataset.mat = m.id;
+        btn.className = 'mat-chip btn-tech px-2 py-1.5 rounded-lg border border-slate-700 bg-slate-950/90 hover:border-slate-500 flex items-center gap-1.5 shrink-0';
+        btn.title = `${m.name}: ${m.desc}`;
+        btn.innerHTML = `
+          <span class="w-3 h-3 rounded-sm inline-block shrink-0" style="background:${m.color}; border:1.5px solid ${m.accent}"></span>
+          <span class="text-xs font-bold text-slate-100">${m.short}</span>
+        `;
+        btn.addEventListener('click', () => {
+          state.selectedMat = m.id;
+          if (state.tool === 'carve' || state.tool === 'bond') state.tool = 'hex';
+          SoundFX.click(m.kind === 'energy' ? 680 : 520);
+          syncMatChipsUI();
+          syncToolUI();
+        });
+        el.elementChips.appendChild(btn);
+      });
+      syncMatChipsUI();
+    }
+
+    function syncMatChipsUI() {
+      const m = MATERIALS[state.selectedMat];
+      el.elementChips.querySelectorAll('.mat-chip').forEach(btn => {
+        const active = btn.dataset.mat === state.selectedMat;
+        btn.classList.toggle('active', active && m.kind === 'matter');
+        btn.classList.toggle('active-energy', active && m.kind === 'energy');
+      });
+      el.selectedSpecCard.innerHTML = `
+        <div class="flex items-center justify-between text-amber-300 font-bold">
+          <span>${m.name}</span>
+          <span>1⬡=${m.unitCost.toFixed(2)} / 1△=${(m.unitCost / 6).toFixed(3)}</span>
+        </div>
+        <div class="text-slate-400 font-sans text-[10px]">${m.desc}</div>
+        <div class="grid grid-cols-2 gap-1 pt-1 text-slate-300">
+          <div>密度: ${m.density}</div>
+          <div>耐久: ${m.durability}</div>
+          <div>摩擦: ${m.friction}</div>
+          <div>弾性: ${m.restitution}</div>
+        </div>
+      `;
+    }
+
+    function syncToolUI() {
+      const map = {
+        hex: el.btnToolHex,
+        tri: el.btnToolTri,
+        line: el.btnToolLine,
+        carve: el.btnToolCarve,
+        bond: el.btnToolBond
+      };
+      Object.entries(map).forEach(([k, btn]) => {
+        btn.classList.remove('active', 'active-rose');
+        if (k === state.tool) btn.classList.add(k === 'carve' ? 'active-rose' : 'active');
+      });
+
+      const isBond = state.tool === 'bond' && state.mode === 'design';
+      el.bondSubBar.classList.toggle('hidden', !isBond);
+      el.btnBondCut.className = state.bondSubMode === 'cut'
+        ? 'px-2 py-0.5 rounded text-[11px] font-bold border border-rose-400/70 bg-rose-500/25 text-rose-200'
+        : 'px-2 py-0.5 rounded text-[11px] font-bold border border-slate-700 bg-slate-800 text-slate-300 hover:text-white';
+      el.btnBondJoin.className = state.bondSubMode === 'join'
+        ? 'px-2 py-0.5 rounded text-[11px] font-bold border border-emerald-400/70 bg-emerald-500/25 text-emerald-200'
+        : 'px-2 py-0.5 rounded text-[11px] font-bold border border-slate-700 bg-slate-800 text-slate-300 hover:text-white';
+
+      const labels = {
+        hex: ['⬡ 六角配置: クリック/ドラッグで配置（右クリック削除）', '面積 6/6 = 1.00'],
+        tri: ['△ 三角編集: 1/6 正三角形を配置・造形（右クリック削除）', '面積 1/6 = 0.167'],
+        line: ['╱ 直線描画: ドラッグで凹凸ゼロの水平・60°壁を描画', '0° / 60° / 120° 自動スナップ'],
+        carve: ['✂ 削り: 三角形単位でくり抜き・面取り', '1/6 単位で削除'],
+        bond: ['🔗 接続: 境界を横切る/なぞって切断（右ドラッグ再結合）', '独立剛体を色分け表示中']
+      };
+      if (state.mode === 'design') {
+        el.hoverMain.textContent = labels[state.tool][0];
+        el.hoverSub.textContent = labels[state.tool][1];
+      }
+    }
+
+    function syncVisButtonsUI() {
+      const styles = {
+        field: 'border-orange-400/60 bg-orange-500/20 text-orange-200',
+        bonds: 'border-cyan-400/60 bg-cyan-500/20 text-cyan-200',
+        mesh: 'border-emerald-400/60 bg-emerald-500/20 text-emerald-200',
+        velocity: 'border-sky-400/60 bg-sky-500/20 text-sky-200',
+        damage: 'border-rose-400/60 bg-rose-500/20 text-rose-200',
+        contacts: 'border-amber-400/60 bg-amber-500/20 text-amber-200'
+      };
+      document.querySelectorAll('.vis-btn').forEach(btn => {
+        const key = btn.dataset.vis;
+        const on = !!state.vis[key];
+        const base = btn.classList.contains('text-xs')
+          ? 'vis-btn px-2 py-1 rounded-md text-xs font-bold border '
+          : 'vis-btn px-2 py-1 rounded text-[11px] font-bold border ';
+        btn.className = base + (on ? styles[key] : 'border-slate-700 bg-slate-800 text-slate-400');
+      });
+    }
+
+    function updateTelemetryHUD() {
+      if (state.mode === 'design') {
+        const info = computeDesignComponents();
+        el.costPill.textContent = `コスト ${info.totalCost.toFixed(2)}`;
+        el.statArea.textContent = `${(info.triCount / 6).toFixed(2)} ⬡`;
+        el.statCost.textContent = info.totalCost.toFixed(2);
+        el.statBodies.textContent = `${info.comps.length} / ${info.triCount}△`;
+        el.statMass.textContent = `${info.totalMass.toFixed(1)} kg`;
+        el.statDamageCount.textContent = '0 / 0';
+        el.statSpeedPeak.textContent = '0 / 0.0';
+        el.simClockPill.textContent = 'T+ 0.00s';
+      } else {
+        let aliveTris = 0;
+        for (const b of PhysicsEngine.bodies) {
+          for (const tr of b.tris) if (tr.hp > 0 && !tr.consumed) aliveTris++;
+        }
+        el.statBodies.textContent = `${PhysicsEngine.bodies.length} / ${aliveTris}△`;
+        el.statMass.textContent = `${PhysicsEngine.stats.totalMass.toFixed(1)} kg`;
+        el.statDamageCount.textContent = `${PhysicsEngine.stats.brokenBonds} / ${PhysicsEngine.stats.destroyedTris}`;
+        el.statSpeedPeak.textContent = `${Math.round(PhysicsEngine.stats.maxSpeed)} / ${FieldEngine.peakEnergy.toFixed(1)}`;
+        el.simClockPill.textContent = `T+ ${PhysicsEngine.simTime.toFixed(2)}s`;
+      }
+    }
+
+    function switchMode(mode) {
+      state.mode = mode;
+      const live = mode === 'sim';
+      el.dockDesign.classList.toggle('hidden', live);
+      el.dockSim.classList.toggle('hidden', !live);
+      el.bondSubBar.classList.toggle('hidden', live || state.tool !== 'bond');
+      el.modeBadge.textContent = live ? 'LIVE' : 'DESIGN';
+      el.modeBadge.className = live
+        ? 'hidden md:inline-block font-mono-tech text-[10px] font-bold px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40 shrink-0'
+        : 'hidden md:inline-block font-mono-tech text-[10px] font-bold px-2 py-0.5 rounded bg-cyan-500/15 text-cyan-300 border border-cyan-500/35 shrink-0';
+
+      if (live) {
+        state.paused = false;
+        PhysicsAdvisor.reset(true);
+        PhysicsEngine.initFromDesign(state.tris, state.severedBonds, state.autoIgnite);
+        TutorialMgr.checkProgress();
+      } else {
+        state.paused = false;
+        PhysicsAdvisor.cardOpen = false;
+        PhysicsAdvisor.syncUI();
+      }
+
+      el.btnPause.textContent = state.paused ? '▶' : '⏸';
+      el.hoverMain.textContent = live
+        ? '[SPACE] 点火・起爆 ・ ホイールでズーム観察'
+        : '⬡六角 / △三角 / ╱直線 / ✂削り / 🔗接続切替';
+      el.hoverSub.textContent = '';
+      if (!live) syncToolUI();
+      updateTelemetryHUD();
+    }
+
+    function loadPreset(key) {
+      const p = getPreset(key);
+      if (!p) return;
+      if (TutorialMgr.active) TutorialMgr.stop();
+      if (state.mode === 'sim') switchMode('design');
+      pushUndo();
+      state.tris = p.tris;
+      state.severedBonds = p.severed;
+      state.autoIgnite = p.autoIgnite;
+      state.currentName = p.name;
+      el.bpNameInput.value = p.name;
+      syncAutoIgniteUI();
+      PhysicsAdvisor.reset(true);
+      updateTelemetryHUD();
+      showToast(`サンプル「${p.name}」を読み込みました！`, 'success');
+    }
+
+    function syncAutoIgniteUI() {
+      el.btnAutoIgnite.className = state.autoIgnite
+        ? 'btn-tech px-2 py-1.5 rounded-lg border border-amber-500/45 bg-amber-500/15 text-amber-300 text-xs font-bold'
+        : 'btn-tech px-2 py-1.5 rounded-lg border border-slate-700 bg-slate-800 text-slate-400 text-xs font-bold';
+      el.btnAutoIgnite.textContent = state.autoIgnite ? '⚡自動点火' : '⚡手動点火';
+    }
+
+    // ブループリント管理（localStorage & 文字列コード）
+    const BP_STORAGE_KEY = 'hexaballistica_v2_blueprints';
+    function serializeBlueprint(name) {
+      const trisList = [];
+      for (let r = 0; r < GRID_ROWS; r++) {
+        for (let c = 0; c < GRID_COLS; c++) {
+          for (let t = 0; t < 6; t++) {
+            if (state.tris[r][c][t]) trisList.push([r, c, t, state.tris[r][c][t]]);
+          }
+        }
+      }
+      return {
+        n: name || state.currentName,
+        a: state.autoIgnite ? 1 : 0,
+        t: trisList,
+        s: Array.from(state.severedBonds)
+      };
+    }
+
+    function applyBlueprintObject(obj) {
+      if (!obj || !Array.isArray(obj.t)) throw new Error('invalid');
+      if (state.mode === 'sim') switchMode('design');
+      pushUndo();
+      const grid = createEmptyTriGrid();
+      for (const [r, c, t, matId] of obj.t) {
+        if (TriHexMath.triValid(r, c, t) && MATERIALS[matId]) {
+          grid[r][c][t] = matId;
+        }
+      }
+      state.tris = grid;
+      state.severedBonds = new Set(Array.isArray(obj.s) ? obj.s : []);
+      state.autoIgnite = obj.a !== 0;
+      state.currentName = String(obj.n || '輸入設計図').slice(0, 20);
+      el.bpNameInput.value = state.currentName;
+      syncAutoIgniteUI();
+      PhysicsAdvisor.reset(true);
+      updateTelemetryHUD();
+    }
+
+    function encodeShareCode() {
+      const json = JSON.stringify(serializeBlueprint(el.bpNameInput.value));
+      try {
+        return 'HB2:' + btoa(unescape(encodeURIComponent(json)));
+      } catch (e) {
+        return json;
+      }
+    }
+
+    function renderSavedBlueprints() {
+      let list = [];
+      try { list = JSON.parse(localStorage.getItem(BP_STORAGE_KEY) || '[]'); } catch (e) {}
+      if (list.length === 0) {
+        el.bpSlotList.innerHTML = '<div class="text-slate-500 text-[11px]">保存された設計図はまだありません</div>';
+        return;
+      }
+      el.bpSlotList.innerHTML = '';
+      list.forEach((bp, idx) => {
+        const row = document.createElement('div');
+        row.className = 'flex items-center justify-between gap-2 bg-slate-950/80 border border-slate-800 rounded-lg px-2.5 py-1.5';
+        row.innerHTML = `
+          <span class="font-bold text-slate-200 truncate">${bp.n} <span class="text-slate-500 font-mono-tech text-[10px]">(${bp.t.length}△)</span></span>
+          <div class="flex gap-1 shrink-0">
+            <button class="bp-load px-2 py-0.5 rounded bg-cyan-500/20 hover:bg-cyan-500/35 text-cyan-300 font-bold">読込</button>
+            <button class="bp-del px-2 py-0.5 rounded bg-rose-500/15 hover:bg-rose-500/30 text-rose-300 font-bold">削除</button>
+          </div>
+        `;
+        row.querySelector('.bp-load').addEventListener('click', () => {
+          applyBlueprintObject(bp);
+          el.bpModal.classList.add('hidden');
+          showToast(`設計図「${bp.n}」を読み込みました！`, 'success');
+        });
+        row.querySelector('.bp-del').addEventListener('click', () => {
+          list.splice(idx, 1);
+          try { localStorage.setItem(BP_STORAGE_KEY, JSON.stringify(list)); } catch (e) {}
+          renderSavedBlueprints();
+        });
+        el.bpSlotList.appendChild(row);
+      });
+    }
+
+    // =========================================================================
+    // MODULE 14: ポインタ操作＆全イベントバインド
+    // =========================================================================
+    function handleDesignPointerAt(wx, wy, isErase) {
+      let changed = false;
+      if (state.tool === 'hex') {
+        const h = TriHexMath.worldToHex(wx, wy);
+        if (h) changed = isErase ? removeHex(h.r, h.c) : placeHex(h.r, h.c, state.selectedMat);
+      } else if (state.tool === 'tri') {
+        const tr = TriHexMath.worldToTri(wx, wy);
+        if (tr) changed = isErase ? removeTriangle(tr.r, tr.c, tr.t) : placeTriangle(tr.r, tr.c, tr.t, state.selectedMat);
+      } else if (state.tool === 'carve') {
+        const tr = TriHexMath.worldToTri(wx, wy);
+        if (tr) changed = removeTriangle(tr.r, tr.c, tr.t);
+      }
+      if (changed) {
+        SoundFX.click(isErase || state.tool === 'carve' ? 310 : 540);
+        updateTelemetryHUD();
+        TutorialMgr.checkProgress();
+      }
+    }
+
+    function bindEvents() {
+      el.canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+      // ホイールズーム
+      el.canvas.addEventListener('wheel', e => {
+        e.preventDefault();
+        const factor = e.deltaY < 0 ? 1.12 : 0.89;
+        setZoom(state.cam.zoom * factor, e.clientX, e.clientY);
+      }, { passive: false });
+
+      // ポインタダウン（マウス＆タッチ統合）
+      const onPointerDown = (clientX, clientY, button, shiftKey) => {
+        // 中ボタン or Shift+ドラッグでパン
+        if (button === 1 || (button === 0 && shiftKey)) {
+          state.cam.isPanning = true;
+          state.cam.panStartScreenX = clientX;
+          state.cam.panStartScreenY = clientY;
+          state.cam.panStartX = state.cam.panX;
+          state.cam.panStartY = state.cam.panY;
+          el.canvas.style.cursor = 'grabbing';
+          return;
+        }
+        if (state.mode !== 'design') return;
+
+        const w = screenToWorld(clientX, clientY);
+        state.rightButton = (button === 2);
+
+        if (state.tool === 'bond') {
+          pushUndo();
+          state.bondDragActive = true;
+          state.bondDragMoved = false;
+          state.bondDragAction = state.rightButton ? 'join' : state.bondSubMode;
+          state.bondStroke = [{ x: w.x, y: w.y }];
+          state.bondHitKeys = new Set();
+          return;
+        }
+
+        if (state.tool === 'line' && !state.rightButton) {
+          state.isDrawing = true;
+          state.lineStart = { x: w.x, y: w.y };
+          state.lineEnd = { x: w.x, y: w.y };
+          state.linePreview = segmentTriangles(w.x, w.y, w.x, w.y, state.selectedMat, 14);
+          return;
+        }
+
+        pushUndo();
+        state.isDrawing = true;
+        handleDesignPointerAt(w.x, w.y, state.rightButton);
+      };
+
+      const onPointerMove = (clientX, clientY) => {
+        if (state.cam.isPanning) {
+          state.cam.panX = state.cam.panStartX + (clientX - state.cam.panStartScreenX);
+          state.cam.panY = state.cam.panStartY + (clientY - state.cam.panStartScreenY);
+          return;
+        }
+        if (state.mode !== 'design') return;
+
+        const w = screenToWorld(clientX, clientY);
+        state.hoverHex = TriHexMath.worldToHex(w.x, w.y);
+        state.hoverTri = TriHexMath.worldToTri(w.x, w.y);
+        state.hoverEdge = state.tool === 'bond' ? findNearestSharedEdge(w.x, w.y, 15) : null;
+
+        if (state.bondDragActive) {
+          const prev = state.bondStroke[state.bondStroke.length - 1];
+          if (Math.hypot(w.x - prev.x, w.y - prev.y) >= 4) {
+            state.bondDragMoved = true;
+            applyBondKnifeSegment(prev.x, prev.y, w.x, w.y, state.bondDragAction);
+            state.bondStroke.push({ x: w.x, y: w.y });
+            if (state.bondStroke.length > 18) state.bondStroke.shift();
+          }
+          return;
+        }
+
+        if (state.isDrawing) {
+          if (state.tool === 'line' && !state.rightButton && state.lineStart) {
+            state.lineEnd = { x: w.x, y: w.y };
+            state.linePreview = segmentTriangles(state.lineStart.x, state.lineStart.y, w.x, w.y, state.selectedMat, 14);
+          } else {
+            handleDesignPointerAt(w.x, w.y, state.rightButton);
+          }
+        }
+      };
+
+      const onPointerUp = (clientX, clientY) => {
+        if (state.cam.isPanning) {
+          state.cam.isPanning = false;
+          el.canvas.style.cursor = 'crosshair';
+          return;
+        }
+        if (state.bondDragActive) {
+          // ドラッグせず単発クリックだった場合は最寄り辺をトグル
+          if (!state.bondDragMoved && clientX !== undefined) {
+            const w = screenToWorld(clientX, clientY);
+            const edge = findNearestSharedEdge(w.x, w.y, 16);
+            if (edge) {
+              if (state.severedBonds.has(edge.key)) {
+                state.severedBonds.delete(edge.key);
+                SoundFX.slice(false);
+                state.bondSparks.push({ x: edge.mx, y: edge.my, color: '#34d399', age: 0, life: 0.35 });
+              } else {
+                state.severedBonds.add(edge.key);
+                SoundFX.slice(true);
+                state.bondSparks.push({ x: edge.mx, y: edge.my, color: '#fb7185', age: 0, life: 0.35 });
+              }
+              PhysicsAdvisor.clearDesignPinsOnEdit();
+              updateTelemetryHUD();
+              TutorialMgr.checkProgress();
+            }
+          }
+          state.bondDragActive = false;
+          state.bondDragMoved = false;
+          state.bondStroke = [];
+          return;
+        }
+
+        if (state.isDrawing && state.tool === 'line' && !state.rightButton && state.linePreview.length > 0) {
+          pushUndo();
+          const newKeys = new Set(state.linePreview.map(([r, c, t]) => TriHexMath.triKey(r, c, t)));
+          let count = 0;
+          for (const [r, c, t, m] of state.linePreview) {
+            if (placeTriangle(r, c, t, m, state.autoBond)) count++;
+          }
+          // 同一ストローク内は常に内部接続
+          for (const [r, c, t] of state.linePreview) {
+            for (const nb of TriHexMath.triNeighbors(r, c, t)) {
+              if (nb.valid && newKeys.has(TriHexMath.triKey(nb.r, nb.c, nb.t))) {
+                state.severedBonds.delete(TriHexMath.bondKey(r, c, t, nb.r, nb.c, nb.t));
+              }
+            }
+          }
+          if (count > 0) {
+            SoundFX.click(620);
+            updateTelemetryHUD();
+            TutorialMgr.checkProgress();
+          }
+        }
+        state.isDrawing = false;
+        state.lineStart = null;
+        state.lineEnd = null;
+        state.linePreview = [];
+      };
+
+      el.canvas.addEventListener('mousedown', e => onPointerDown(e.clientX, e.clientY, e.button, e.shiftKey));
+      window.addEventListener('mousemove', e => onPointerMove(e.clientX, e.clientY));
+      window.addEventListener('mouseup', e => onPointerUp(e.clientX, e.clientY));
+
+      el.canvas.addEventListener('touchstart', e => {
+        if (e.touches.length === 1) {
+          e.preventDefault();
+          onPointerDown(e.touches[0].clientX, e.touches[0].clientY, 0, false);
+        }
+      }, { passive: false });
+      el.canvas.addEventListener('touchmove', e => {
+        if (e.touches.length === 1) {
+          e.preventDefault();
+          onPointerMove(e.touches[0].clientX, e.touches[0].clientY);
+        }
+      }, { passive: false });
+      el.canvas.addEventListener('touchend', e => {
+        const t = e.changedTouches[0];
+        onPointerUp(t ? t.clientX : undefined, t ? t.clientY : undefined);
+      });
+
+      // ツール切替ボタン
+      el.btnToolHex.addEventListener('click', () => { state.tool = 'hex'; SoundFX.click(520); syncToolUI(); });
+      el.btnToolTri.addEventListener('click', () => { state.tool = 'tri'; SoundFX.click(560); syncToolUI(); });
+      el.btnToolLine.addEventListener('click', () => { state.tool = 'line'; SoundFX.click(600); syncToolUI(); });
+      el.btnToolCarve.addEventListener('click', () => { state.tool = 'carve'; SoundFX.click(340); syncToolUI(); });
+      el.btnToolBond.addEventListener('click', () => { state.tool = 'bond'; SoundFX.click(640); syncToolUI(); });
+
+      el.btnBondCut.addEventListener('click', () => { state.bondSubMode = 'cut'; SoundFX.click(380); syncToolUI(); });
+      el.btnBondJoin.addEventListener('click', () => { state.bondSubMode = 'join'; SoundFX.click(640); syncToolUI(); });
+      el.btnBondSplitMat.addEventListener('click', splitAllDifferentMaterialBonds);
+
+      el.btnAutoBond.addEventListener('click', () => {
+        state.autoBond = !state.autoBond;
+        el.btnAutoBond.textContent = state.autoBond ? '自動接続: ON' : '自動接続: OFF';
+        el.btnAutoBond.className = state.autoBond
+          ? 'btn-tech px-2 py-1.5 rounded-lg border border-emerald-500/50 bg-emerald-950/40 text-emerald-300 text-xs font-bold'
+          : 'btn-tech px-2 py-1.5 rounded-lg border border-amber-500/50 bg-amber-950/40 text-amber-300 text-xs font-bold';
+        SoundFX.click(state.autoBond ? 560 : 380);
+      });
+
+      el.btnAutoIgnite.addEventListener('click', () => {
+        state.autoIgnite = !state.autoIgnite;
+        syncAutoIgniteUI();
+        SoundFX.click(state.autoIgnite ? 600 : 400);
+      });
+
+      el.btnUndo.addEventListener('click', () => {
+        if (state.history.length === 0) return showToast('これ以上戻せません', 'info');
+        const prev = state.history.pop();
+        state.tris = prev.tris;
+        state.severedBonds = prev.severed;
+        SoundFX.click(380);
+        updateTelemetryHUD();
+      });
+
+      el.btnClear.addEventListener('click', () => {
+        pushUndo();
+        state.tris = createEmptyTriGrid();
+        state.severedBonds.clear();
+        PhysicsAdvisor.reset(true);
+        SoundFX.click(280);
+        updateTelemetryHUD();
+        showToast('グリッドを全消去しました', 'info');
+      });
+
+      // 実行・停止・再実行・点火・コマ送り
+      el.btnStartSim.addEventListener('click', () => switchMode('sim'));
+      el.btnBackToDesign.addEventListener('click', () => switchMode('design'));
+      el.btnRestartSim.addEventListener('click', () => switchMode('sim'));
+      el.btnTriggerEnergy.addEventListener('click', () => {
+        if (PhysicsEngine.triggerAllEnergy() === 0) showToast('未点火の火薬・推進剤がありません', 'info');
+      });
+
+      el.btnPause.addEventListener('click', () => {
+        state.paused = !state.paused;
+        el.btnPause.textContent = state.paused ? '▶' : '⏸';
+      });
+      el.btnStep.addEventListener('click', () => {
+        state.paused = true;
+        el.btnPause.textContent = '▶';
+        PhysicsEngine.step(1 / 60);
+        PhysicsAdvisor.evaluate();
+        updateTelemetryHUD();
+      });
+      document.querySelectorAll('.speed-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          state.simSpeed = parseFloat(btn.dataset.speed);
+          document.querySelectorAll('.speed-btn').forEach(b => {
+            const act = parseFloat(b.dataset.speed) === state.simSpeed;
+            b.className = act
+              ? 'speed-btn px-2 py-1 rounded-md text-xs font-mono-tech font-bold bg-cyan-500 text-slate-950'
+              : 'speed-btn px-2 py-1 rounded-md text-xs font-mono-tech font-bold bg-slate-800 text-slate-400 hover:text-white';
+          });
+        });
+      });
+
+      // 可視化トグル
+      document.querySelectorAll('.vis-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const key = btn.dataset.vis;
+          state.vis[key] = !state.vis[key];
+          syncVisButtonsUI();
+        });
+      });
+
+      // ズーム操作
+      el.btnZoomIn.addEventListener('click', () => setZoom(state.cam.zoom * 1.25));
+      el.btnZoomOut.addEventListener('click', () => setZoom(state.cam.zoom * 0.8));
+      el.btnZoomReset.addEventListener('click', resetCamera);
+
+      // ヘッダー＆ドロワー＆モーダル
+      el.presetSelect.addEventListener('change', e => {
+        if (e.target.value) {
+          loadPreset(e.target.value);
+          e.target.selectedIndex = 0;
+        }
+      });
+      el.btnStartTutorial.addEventListener('click', () => TutorialMgr.start());
+      el.btnExitTutorial.addEventListener('click', () => TutorialMgr.stop());
+      el.btnTutSkipStep.addEventListener('click', () => {
+        if (TutorialMgr.step >= 5) TutorialMgr.stop();
+        else TutorialMgr.advanceStep(true);
+      });
+
+      el.btnToggleInspector.addEventListener('click', () => el.inspectorDrawer.classList.toggle('hidden'));
+      el.btnCloseInspector.addEventListener('click', () => el.inspectorDrawer.classList.add('hidden'));
+      el.btnClearLog.addEventListener('click', () => {
+        el.eventLog.innerHTML = '<div class="text-slate-500">待機中</div>';
+      });
+
+      // 物理観測メモUI
+      el.btnToggleHint.addEventListener('click', () => {
+        PhysicsAdvisor.cardOpen = !PhysicsAdvisor.cardOpen;
+        PhysicsAdvisor.syncUI();
+      });
+      el.btnCloseHintCard.addEventListener('click', () => {
+        PhysicsAdvisor.cardOpen = false;
+        PhysicsAdvisor.syncUI();
+      });
+      el.btnToggleHintPin.addEventListener('click', () => {
+        PhysicsAdvisor.showPins = !PhysicsAdvisor.showPins;
+        PhysicsAdvisor.syncUI();
+      });
+
+      // ブループリントモーダル
+      el.btnOpenBlueprints.addEventListener('click', () => {
+        el.bpNameInput.value = state.currentName;
+        el.shareCodeText.value = encodeShareCode();
+        renderSavedBlueprints();
+        el.bpModal.classList.remove('hidden');
+      });
+      el.btnCloseBpModal.addEventListener('click', () => el.bpModal.classList.add('hidden'));
+      el.btnSaveBp.addEventListener('click', () => {
+        const name = (el.bpNameInput.value || '無題の発明').trim();
+        state.currentName = name;
+        let list = [];
+        try { list = JSON.parse(localStorage.getItem(BP_STORAGE_KEY) || '[]'); } catch (e) {}
+        list.unshift(serializeBlueprint(name));
+        if (list.length > 12) list.pop();
+        try { localStorage.setItem(BP_STORAGE_KEY, JSON.stringify(list)); } catch (e) {}
+        el.shareCodeText.value = encodeShareCode();
+        renderSavedBlueprints();
+        showToast(`「${name}」を保存しました！`, 'success');
+      });
+      el.btnCopyCode.addEventListener('click', () => {
+        el.shareCodeText.select();
+        el.shareCodeText.setSelectionRange(0, 99999);
+        try {
+          document.execCommand('copy');
+          showToast('設計図コードをコピーしました！', 'success');
+        } catch (e) {
+          showToast('テキストを選択してコピーしてください', 'warn');
+        }
+      });
+      el.btnImportCode.addEventListener('click', () => {
+        try {
+          const raw = el.shareCodeText.value.trim();
+          const obj = raw.startsWith('HB2:')
+            ? JSON.parse(decodeURIComponent(escape(atob(raw.slice(4)))))
+            : JSON.parse(raw);
+          applyBlueprintObject(obj);
+          el.bpModal.classList.add('hidden');
+          showToast(`設計図「${state.currentName}」を読み込みました！`, 'success');
+        } catch (e) {
+          showToast('設計コードの形式が正しくありません', 'danger');
+        }
+      });
+
+      // ガイド＆音
+      el.btnGuide.addEventListener('click', () => el.guideModal.classList.remove('hidden'));
+      el.btnCloseGuide.addEventListener('click', () => el.guideModal.classList.add('hidden'));
+      el.btnMute.addEventListener('click', () => {
+        SoundFX.muted = !SoundFX.muted;
+        el.btnMute.textContent = SoundFX.muted ? '🔇' : '🔊';
+      });
+
+      // キーボードショートカット
+      window.addEventListener('keydown', e => {
+        if (document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA')) return;
+        if (e.code === 'Space') {
+          e.preventDefault();
+          if (state.mode === 'design') switchMode('sim');
+          else PhysicsEngine.triggerAllEnergy();
+        } else if (e.code === 'Escape' && state.mode === 'sim') {
+          switchMode('design');
+        }
+      });
+    }
+
+    // =========================================================================
+    // MODULE 15: メインループ & 初期化
+    // =========================================================================
+    let lastTs = 0;
+    let advisorTick = 0;
+
+    function mainLoop(ts) {
+      if (!lastTs) lastTs = ts;
+      const rawDt = Math.min(0.05, (ts - lastTs) / 1000);
+      lastTs = ts;
+
+      // ナイフ火花アニメーション更新
+      for (const sp of state.bondSparks) sp.age += rawDt;
+      state.bondSparks = state.bondSparks.filter(sp => sp.age < sp.life);
+
+      if (state.mode === 'sim' && !state.paused) {
+        const totalDt = rawDt * state.simSpeed;
+        const fixed = 1 / 60;
+        let rem = totalDt;
+        while (rem > 0.0001) {
+          const stepDt = Math.min(fixed, rem);
+          PhysicsEngine.step(stepDt);
+          rem -= stepDt;
+        }
+        advisorTick += rawDt;
+        if (advisorTick >= 0.18) {
+          advisorTick = 0;
+          PhysicsAdvisor.evaluate();
+        }
+        updateTelemetryHUD();
+      }
+
+      drawWorld(ts / 1000);
+      requestAnimationFrame(mainLoop);
+    }
+
+    window.onload = function () {
+      buildElementChips();
+      syncToolUI();
+      syncVisButtonsUI();
+      syncAutoIgniteUI();
+      bindEvents();
+      TutorialMgr.start();
+      requestAnimationFrame(mainLoop);
+    };
+  })();
+  </script>
+</body>
+</html>
