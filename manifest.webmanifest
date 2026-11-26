@@ -1,0 +1,19 @@
+{
+  "name": "HexaBallistica — 創発物理サンドボックス",
+  "short_name": "HexaBallistica",
+  "description": "正六角形と6分割正三角形で物理兵器・構造物を設計し実験する創発物理サンドボックス",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#060a12",
+  "theme_color": "#060a12",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
