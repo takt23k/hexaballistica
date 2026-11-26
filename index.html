@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="theme-color" content="#060a12">
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="manifest" href="./manifest.webmanifest">
@@ -130,9 +131,9 @@
 <body class="h-[100dvh] w-screen overflow-hidden flex flex-col bg-[#060a12]">
 
   <!-- ==================== 1行コンパクトヘッダー ==================== -->
-  <header id="appHeader" class="bg-slate-950/95 border-b border-slate-800/80 px-2.5 sm:px-3.5 py-1.5 min-h-[48px] flex items-center justify-between gap-2 shrink-0 z-30">
+  <header id="appHeader" class="bg-slate-950/95 border-b border-slate-800/80 px-2 sm:px-3.5 py-1.5 min-h-[48px] flex items-center justify-between gap-1.5 shrink-0 z-30">
     <!-- 左：ブランド＋統合コスト -->
-    <div class="flex items-center gap-2 min-w-0">
+    <div class="flex items-center gap-1.5 min-w-0">
       <div class="w-7 h-7 rounded-lg bg-slate-900 border border-cyan-500/50 flex items-center justify-center shrink-0">
         <svg class="w-4 h-4 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round">
           <polygon points="21,12 16.5,19.8 7.5,19.8 3,12 7.5,4.2 16.5,4.2" fill="rgba(34,211,238,0.12)"></polygon>
@@ -142,14 +143,14 @@
         </svg>
       </div>
       <div class="flex items-center gap-1.5 min-w-0">
-        <h1 class="font-mono-tech font-bold text-sm sm:text-[15px] tracking-tight text-slate-100 leading-none truncate">HexaBallistica</h1>
+        <h1 class="font-mono-tech font-bold text-[12.5px] sm:text-[15px] tracking-tight text-slate-100 leading-none whitespace-nowrap">HexaBallistica</h1>
         <span id="modeBadge" class="hidden md:inline-flex items-center text-[10px] font-bold px-1.5 py-0.5 rounded bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 shrink-0">
           編集
         </span>
       </div>
       <!-- ヘッダー統合コスト表示 -->
-      <div class="flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-900 border border-slate-800 shrink-0" title="総コスト（1六角=1 / 1三角=0.17）">
-        <span id="costPill" class="font-mono-tech text-xs font-bold text-amber-300 leading-none">コスト 0</span>
+      <div class="flex items-center gap-1 px-1.5 sm:px-2 py-1 rounded-lg bg-slate-900 border border-slate-800 shrink-0" title="総コスト（1六角=1 / 1三角=0.17）">
+        <span id="costPill" class="font-mono-tech text-[11px] sm:text-xs font-bold text-amber-300 leading-none whitespace-nowrap">コスト 0</span>
         <span id="costDeltaBadge" class="hidden font-mono-tech text-[10px] font-bold leading-none"></span>
       </div>
     </div>
@@ -177,14 +178,14 @@
         <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
         <span class="hidden lg:inline">設計図</span>
       </button>
-      <button id="btnToggleInspector" class="ui-btn h-10 w-10 sm:h-9 sm:w-9 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-200 flex items-center justify-center" title="解析・可視化レイヤー" aria-label="解析・可視化">
+      <button id="btnToggleInspector" class="ui-btn h-9 w-9 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-200 flex items-center justify-center" title="解析・可視化レイヤー" aria-label="解析・可視化">
         <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
       </button>
-      <button id="btnFullscreen" class="ui-btn h-10 w-10 sm:h-9 sm:w-9 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-200 flex items-center justify-center" title="全画面表示切替" aria-label="全画面表示">
+      <button id="btnFullscreen" class="ui-btn h-9 w-9 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-200 flex items-center justify-center" title="全画面表示切替" aria-label="全画面表示">
         <svg id="iconFsEnter" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
         <svg id="iconFsExit" class="w-4 h-4 hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
       </button>
-      <button id="btnMenu" class="ui-btn h-10 w-10 sm:h-9 sm:w-9 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-100 flex items-center justify-center" title="メニュー・設定" aria-label="メニュー・設定">
+      <button id="btnMenu" class="ui-btn h-9 w-9 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-100 flex items-center justify-center" title="メニュー・設定" aria-label="メニュー・設定">
         <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
       </button>
     </div>
@@ -486,39 +487,39 @@
   <!-- ==================== 省スペース階層化ボトムドック ==================== -->
   <footer id="appFooter" class="bg-slate-950/95 border-t border-slate-800/80 px-2.5 sm:px-3.5 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] shrink-0 z-30">
     <!-- 編集モードドック：1行に集約（素材・形状ポップアップ＋戻す/やり直す＋実行） -->
-    <div id="dockDesign" class="max-w-[960px] mx-auto flex items-center justify-between gap-1.5 sm:gap-2">
+    <div id="dockDesign" class="max-w-[960px] mx-auto flex items-center justify-between gap-1 sm:gap-2">
       <!-- 左：素材選択＆形状選択トリガー -->
-      <div class="flex items-center gap-1.5 min-w-0">
-        <button id="btnMatPicker" class="dock-main-btn ui-btn h-11 px-2.5 sm:px-3 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 flex items-center gap-2 min-w-[82px] sm:min-w-[104px]" title="素材を選択">
-          <span id="activeMatSwatch" class="w-3.5 h-3.5 rounded shrink-0 border"></span>
-          <span id="activeMatLabel" class="text-xs font-bold text-slate-100 truncate">重質</span>
-          <svg class="w-3.5 h-3.5 text-slate-400 shrink-0 ml-auto" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"/></svg>
+      <div class="flex items-center gap-1 sm:gap-1.5 shrink-0">
+        <button id="btnMatPicker" class="dock-main-btn ui-btn h-11 px-2 sm:px-3 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 flex items-center gap-1.5 whitespace-nowrap" title="素材を選択">
+          <span id="activeMatSwatch" class="w-3 h-3 sm:w-3.5 sm:h-3.5 rounded shrink-0 border"></span>
+          <span id="activeMatLabel" class="text-xs font-bold text-slate-100">重質</span>
+          <svg class="w-3 h-3 text-slate-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"/></svg>
         </button>
 
-        <button id="btnToolPicker" class="dock-main-btn ui-btn h-11 px-2.5 sm:px-3 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 flex items-center gap-1.5 min-w-[78px] sm:min-w-[100px]" title="形状・ツールを選択">
-          <span id="activeToolIcon" class="w-4 h-4 flex items-center justify-center text-cyan-400 shrink-0"></span>
-          <span id="activeToolLabel" class="text-xs font-bold text-slate-100 truncate">六角</span>
-          <svg class="w-3.5 h-3.5 text-slate-400 shrink-0 ml-auto" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"/></svg>
+        <button id="btnToolPicker" class="dock-main-btn ui-btn h-11 px-2 sm:px-3 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 flex items-center gap-1.5 whitespace-nowrap" title="形状・ツールを選択">
+          <span id="activeToolIcon" class="w-3.5 h-3.5 sm:w-4 sm:h-4 flex items-center justify-center text-cyan-400 shrink-0"></span>
+          <span id="activeToolLabel" class="text-xs font-bold text-slate-100">六角</span>
+          <svg class="w-3 h-3 text-slate-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"/></svg>
         </button>
       </div>
 
       <!-- 中央：元に戻す / やり直す -->
       <div class="flex items-center gap-1 shrink-0">
-        <button id="btnUndo" class="dock-main-btn ui-btn h-11 w-10 sm:w-11 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-200 flex items-center justify-center" title="元に戻す (Ctrl+Z)" aria-label="元に戻す" disabled>
+        <button id="btnUndo" class="dock-main-btn ui-btn h-11 w-9 sm:w-11 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-200 flex items-center justify-center" title="元に戻す (Ctrl+Z)" aria-label="元に戻す" disabled>
           <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>
         </button>
-        <button id="btnRedo" class="dock-main-btn ui-btn h-11 w-10 sm:w-11 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-200 flex items-center justify-center" title="やり直す (Ctrl+Y)" aria-label="やり直す" disabled>
+        <button id="btnRedo" class="dock-main-btn ui-btn h-11 w-9 sm:w-11 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-200 flex items-center justify-center" title="やり直す (Ctrl+Y)" aria-label="やり直す" disabled>
           <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 14 20 9 15 4"/><path d="M4 20v-7a4 4 0 0 1 4-4h12"/></svg>
         </button>
       </div>
 
       <!-- 右：実行CTA＆折りたたみ -->
-      <div class="flex items-center gap-1.5 shrink-0">
-        <button id="btnStartSim" class="dock-main-btn ui-btn h-11 px-4 sm:px-5 rounded-xl bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-extrabold text-xs sm:text-sm tracking-wide flex items-center gap-1.5 whitespace-nowrap">
+      <div class="flex items-center gap-1 sm:gap-1.5 shrink-0">
+        <button id="btnStartSim" class="dock-main-btn ui-btn h-11 px-3 sm:px-5 rounded-xl bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-extrabold text-xs sm:text-sm tracking-wide flex items-center gap-1 whitespace-nowrap">
           <svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><polygon points="6 4 20 12 6 20 6 4"/></svg>
           <span>実行</span>
         </button>
-        <button id="btnToggleDock" class="dock-main-btn ui-btn h-11 w-9 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-slate-200 flex items-center justify-center" title="操作パネルを折りたたむ" aria-label="パネル折りたたみ">
+        <button id="btnToggleDock" class="dock-main-btn ui-btn h-11 w-8 sm:w-9 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-slate-200 flex items-center justify-center" title="操作パネルを折りたたむ" aria-label="パネル折りたたみ">
           <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
         </button>
       </div>
@@ -3470,8 +3471,12 @@
     }
 
     function drawDesignLayer(timeSec) {
-      // 編集時のみ視認性の高い六角グリッドを描画（ON/OFF切替対応）
+      // 編集時のみ視認性の高い六角グリッドを描画（地面より上のみ・ON/OFF切替対応）
       if (state.vis.grid) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(0, 0, WORLD_W, GROUND_Y);
+        ctx.clip();
         const showSubGrid = state.vis.mesh || state.tool === 'tri' || state.tool === 'line' || state.tool === 'carve';
         ctx.lineWidth = 1.05;
         for (let r = 0; r < GRID_ROWS; r++) {
@@ -3493,9 +3498,10 @@
             }
           }
         }
+        ctx.restore();
       }
 
-      const compInfo = (state.tool === 'bond' || state.vis.bonds) ? computeDesignComponents() : null;
+      const compInfo = state.tool === 'bond' ? computeDesignComponents() : null;
 
       // 配置済み三角形の塗りつぶし＋素材パターン質感
       for (let r = 0; r < GRID_ROWS; r++) {
@@ -4034,7 +4040,7 @@
       if (state.mode === 'design' && showHint) {
         flashToolHint(meta.hint, meta.sub);
       }
-      if (TutorialMgr.active) TutorialMgr.syncUI();
+      if (TutorialMgr.active) TutorialMgr.renderUI();
     }
 
     function syncVisButtonsUI() {
