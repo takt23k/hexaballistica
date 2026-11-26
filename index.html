@@ -222,8 +222,11 @@
         </div>
       </div>
 
-      <!-- 右：コンパクト視点コントロール（縮小 / 初期倍率 / 拡大 / 全体表示 / グリッド） -->
+      <!-- 右：コンパクト視点コントロール（手パン / グリッド / 全体表示 / ズーム） -->
       <div class="flex items-center gap-1 shrink-0 pointer-events-auto">
+        <button id="btnPanMode" class="ui-btn h-8 w-8 rounded-lg bg-slate-950/85 border border-slate-700/80 text-slate-300 hover:bg-slate-800 backdrop-blur-sm flex items-center justify-center" title="視点移動モード（1本指でパン）" aria-label="視点移動モード">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 11V6a2 2 0 0 0-2-2 2 2 0 0 0-2 2"/><path d="M14 10V4a2 2 0 0 0-2-2 2 2 0 0 0-2 2v6"/><path d="M10 10.5V6a2 2 0 0 0-2-2 2 2 0 0 0-2 2v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/></svg>
+        </button>
         <button id="btnGridToggle" class="ui-btn h-8 w-8 rounded-lg bg-slate-950/85 border border-cyan-500/40 text-cyan-300 backdrop-blur-sm flex items-center justify-center" title="グリッド表示 ON/OFF" aria-label="グリッド表示切替">
           <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 21 7 21 17 12 22 3 17 3 7 12 2"/></svg>
         </button>
@@ -238,14 +241,15 @@
       </div>
     </div>
 
-    <!-- ブロック長押し／タップ詳細インスペクタ（スポイト連携） -->
-    <div id="blockInfoPill" class="hidden absolute bottom-3 left-1/2 -translate-x-1/2 z-20 px-3 py-2 rounded-xl bg-slate-900/95 border border-slate-700 shadow-2xl backdrop-blur-md text-xs text-slate-200 max-w-[92vw] flex items-center gap-2.5">
+    <!-- ブロック長押し／タップ詳細インスペクタ（スポイト＆即時削除連携） -->
+    <div id="blockInfoPill" class="hidden absolute bottom-3 left-1/2 -translate-x-1/2 z-20 px-3 py-2 rounded-xl bg-slate-900/95 border border-slate-700 shadow-2xl backdrop-blur-md text-xs text-slate-200 max-w-[94vw] flex items-center gap-2.5">
       <span id="blockInfoSwatch" class="w-3.5 h-3.5 rounded shrink-0 border"></span>
-      <div class="min-w-0">
-        <div id="blockInfoTitle" class="font-bold text-slate-100 leading-tight"></div>
-        <div id="blockInfoStats" class="text-[11px] text-slate-400 leading-tight mt-0.5"></div>
+      <div class="min-w-0 flex-1">
+        <div id="blockInfoTitle" class="font-bold text-slate-100 leading-tight truncate"></div>
+        <div id="blockInfoStats" class="text-[11px] text-slate-400 leading-tight mt-0.5 truncate"></div>
       </div>
-      <button id="btnCloseBlockInfo" class="ui-btn w-6 h-6 rounded-md bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center shrink-0">✕</button>
+      <button id="btnDeleteSelectedBlock" class="ui-btn h-8 px-2.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/35 border border-rose-500/45 text-rose-200 text-[11px] font-bold shrink-0">削除</button>
+      <button id="btnCloseBlockInfo" class="ui-btn w-7 h-7 rounded-lg bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center shrink-0">✕</button>
     </div>
 
     <!-- シミュレーション中UI最小化からの復帰ボタン -->
@@ -260,23 +264,23 @@
       <span>操作パネルを開く</span>
     </button>
 
-    <!-- 上部中央フローティング：実践型チュートリアルカード -->
-    <div id="tutorialCard" class="hidden absolute top-12 left-1/2 -translate-x-1/2 z-20 w-[92vw] max-w-[420px] bg-slate-900/95 border border-cyan-500/50 rounded-xl shadow-2xl backdrop-blur-md p-3 space-y-2">
+    <!-- 上部中央フローティング：実践型チュートリアルカード（モバイル省スペース） -->
+    <div id="tutorialCard" class="hidden absolute top-11 left-1/2 -translate-x-1/2 z-20 w-[94vw] max-w-[420px] bg-slate-900/92 border border-cyan-500/45 rounded-xl shadow-2xl backdrop-blur-md p-2.5 space-y-1.5">
       <div class="flex items-center justify-between gap-2">
-        <div class="flex items-center gap-2 min-w-0">
-          <span id="tutStepBadge" class="font-mono-tech text-[10px] font-bold px-2 py-0.5 rounded bg-cyan-500/15 text-cyan-300 border border-cyan-500/35 shrink-0">STEP 1/5</span>
-          <h2 id="tutTitle" class="font-bold text-xs sm:text-sm text-white truncate">直線ツールで平らな上壁を引く</h2>
+        <div class="flex items-center gap-1.5 min-w-0">
+          <span id="tutStepBadge" class="font-mono-tech text-[10px] font-bold px-1.5 py-0.5 rounded bg-cyan-500/15 text-cyan-300 border border-cyan-500/35 shrink-0">1/5</span>
+          <h2 id="tutTitle" class="font-bold text-xs text-white truncate">直線ツールで平らな上壁を引く</h2>
         </div>
-        <button id="btnExitTutorial" class="ui-btn text-slate-400 hover:text-white text-xs font-bold w-7 h-7 rounded-lg hover:bg-slate-800 flex items-center justify-center shrink-0" title="チュートリアルを終了">✕</button>
+        <button id="btnExitTutorial" class="ui-btn text-slate-400 hover:text-white text-xs font-bold w-6 h-6 rounded-md hover:bg-slate-800 flex items-center justify-center shrink-0" title="チュートリアルを終了">✕</button>
       </div>
       <div class="w-full h-1 bg-slate-800 rounded-full overflow-hidden">
         <div id="tutProgressBar" class="h-full bg-cyan-400 transition-all duration-300" style="width: 20%"></div>
       </div>
-      <p id="tutDesc" class="text-xs text-slate-300 leading-relaxed"></p>
-      <div class="flex items-center justify-between gap-2 pt-0.5">
-        <span id="tutStatus" class="font-mono-tech text-[11px] text-amber-300 font-bold truncate">進捗: 0%</span>
+      <p id="tutDesc" class="text-[11px] sm:text-xs text-slate-300 leading-snug"></p>
+      <div class="flex items-center justify-between gap-2">
+        <span id="tutStatus" class="font-mono-tech text-[10px] text-amber-300 font-bold truncate">進捗: 0%</span>
         <div id="tutActions" class="flex items-center gap-1.5 shrink-0">
-          <button id="btnTutSkipStep" class="ui-btn px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-[11px] font-bold text-slate-200">スキップ</button>
+          <button id="btnTutSkipStep" class="ui-btn px-2 py-0.5 rounded-md bg-slate-800 hover:bg-slate-700 border border-slate-700 text-[10px] font-bold text-slate-200">スキップ</button>
         </div>
       </div>
     </div>
@@ -438,47 +442,35 @@
       <div id="matQuickSpec" class="p-2 rounded-xl bg-slate-950/90 border border-slate-800 text-[11px] text-slate-300 leading-relaxed"></div>
     </div>
 
-    <!-- 形状・ツール選択ポップアップ -->
-    <div id="toolPopup" class="hidden absolute bottom-2 left-2.5 right-2.5 sm:left-3 sm:right-auto sm:w-[340px] z-30 bg-slate-900/98 border border-slate-700 rounded-2xl shadow-2xl backdrop-blur-md p-3 space-y-2">
+    <!-- 形状・ツール選択ポップアップ（親指で届きやすい2列コンパクトグリッド） -->
+    <div id="toolPopup" class="hidden absolute bottom-2 left-2.5 right-2.5 sm:left-3 sm:right-auto sm:w-[360px] z-30 bg-slate-900/98 border border-slate-700 rounded-2xl shadow-2xl backdrop-blur-md p-3 space-y-2">
       <div class="flex items-center justify-between">
         <span class="text-xs font-bold text-slate-200">形状・ツールを選択</span>
         <button id="btnCloseToolPopup" class="ui-btn w-7 h-7 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 flex items-center justify-center">✕</button>
       </div>
-      <div class="grid grid-cols-1 gap-1.5">
-        <button id="btnToolHex" class="tool-chip active ui-btn h-11 px-3 rounded-xl border border-slate-800 bg-slate-950/80 flex items-center justify-between text-left">
-          <span class="flex items-center gap-2.5 font-bold text-xs">
-            <svg class="w-4 h-4 text-cyan-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="21,12 16.5,19.8 7.5,19.8 3,12 7.5,4.2 16.5,4.2"/></svg>
-            <span>六角配置</span>
-          </span>
-          <span class="text-[11px] text-slate-400">6/6 (コスト1)</span>
+      <div class="grid grid-cols-2 gap-1.5">
+        <button id="btnToolHex" class="tool-chip active ui-btn h-12 px-2.5 rounded-xl border border-slate-800 bg-slate-950/80 flex items-center gap-2 text-left">
+          <svg class="w-4 h-4 text-cyan-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="21,12 16.5,19.8 7.5,19.8 3,12 7.5,4.2 16.5,4.2"/></svg>
+          <span class="min-w-0"><span class="block font-bold text-xs leading-tight">六角配置</span><span class="block text-[10px] text-slate-400">6/6 (コスト1)</span></span>
         </button>
-        <button id="btnToolTri" class="tool-chip ui-btn h-11 px-3 rounded-xl border border-slate-800 bg-slate-950/80 flex items-center justify-between text-left text-slate-200">
-          <span class="flex items-center gap-2.5 font-bold text-xs">
-            <svg class="w-4 h-4 text-amber-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 4 21 19 3 19"/></svg>
-            <span>三角造形</span>
-          </span>
-          <span class="text-[11px] text-slate-400">1/6 (先端・薄壁)</span>
+        <button id="btnToolTri" class="tool-chip ui-btn h-12 px-2.5 rounded-xl border border-slate-800 bg-slate-950/80 flex items-center gap-2 text-left text-slate-200">
+          <svg class="w-4 h-4 text-amber-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 4 21 19 3 19"/></svg>
+          <span class="min-w-0"><span class="block font-bold text-xs leading-tight">三角造形</span><span class="block text-[10px] text-slate-400">1/6 (先端・薄壁)</span></span>
         </button>
-        <button id="btnToolLine" class="tool-chip ui-btn h-11 px-3 rounded-xl border border-slate-800 bg-slate-950/80 flex items-center justify-between text-left text-slate-200">
-          <span class="flex items-center gap-2.5 font-bold text-xs">
-            <svg class="w-4 h-4 text-emerald-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="20" x2="20" y2="4"/></svg>
-            <span>直線描画</span>
-          </span>
-          <span class="text-[11px] text-slate-400">凹凸ゼロの平滑壁</span>
+        <button id="btnToolLine" class="tool-chip ui-btn h-12 px-2.5 rounded-xl border border-slate-800 bg-slate-950/80 flex items-center gap-2 text-left text-slate-200">
+          <svg class="w-4 h-4 text-emerald-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="20" x2="20" y2="4"/></svg>
+          <span class="min-w-0"><span class="block font-bold text-xs leading-tight">直線描画</span><span class="block text-[10px] text-slate-400">平滑壁を一気描き</span></span>
         </button>
-        <button id="btnToolCarve" class="tool-chip ui-btn h-11 px-3 rounded-xl border border-slate-800 bg-slate-950/80 flex items-center justify-between text-left text-slate-200">
-          <span class="flex items-center gap-2.5 font-bold text-xs">
-            <svg class="w-4 h-4 text-rose-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/></svg>
-            <span>削り・削除</span>
-          </span>
-          <span class="text-[11px] text-slate-400">三角単位でくり抜く</span>
+        <button id="btnToolCarve" class="tool-chip ui-btn h-12 px-2.5 rounded-xl border border-slate-800 bg-slate-950/80 flex items-center gap-2 text-left text-slate-200">
+          <svg class="w-4 h-4 text-rose-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/></svg>
+          <span class="min-w-0"><span class="block font-bold text-xs leading-tight">削り・削除</span><span class="block text-[10px] text-slate-400">三角単位で削除</span></span>
         </button>
-        <button id="btnToolBond" class="tool-chip ui-btn h-11 px-3 rounded-xl border border-slate-800 bg-slate-950/80 flex items-center justify-between text-left text-slate-200">
-          <span class="flex items-center gap-2.5 font-bold text-xs">
+        <button id="btnToolBond" class="tool-chip ui-btn col-span-2 h-11 px-3 rounded-xl border border-slate-800 bg-slate-950/80 flex items-center justify-between text-left text-slate-200">
+          <span class="flex items-center gap-2 font-bold text-xs">
             <svg class="w-4 h-4 text-cyan-300 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
             <span>接続・分離</span>
           </span>
-          <span class="text-[11px] text-slate-400">弾や部品を切り離す</span>
+          <span class="text-[11px] text-slate-400">弾や可動部品を切り離す</span>
         </button>
       </div>
     </div>
@@ -2152,9 +2144,11 @@
         panStartY: 0
       },
       // 設計ポインタ状態
+      panMode: false,
       isDrawing: false,
       rightButton: false,
       touchActive: false,
+      touchAnchorWorld: null,
       touchWorld: null,
       hoverHex: null,
       hoverTri: null,
@@ -2465,6 +2459,7 @@
       blockInfoSwatch: document.getElementById('blockInfoSwatch'),
       blockInfoTitle: document.getElementById('blockInfoTitle'),
       blockInfoStats: document.getElementById('blockInfoStats'),
+      btnDeleteSelectedBlock: document.getElementById('btnDeleteSelectedBlock'),
       btnCloseBlockInfo: document.getElementById('btnCloseBlockInfo'),
       simUiRestoreBtn: document.getElementById('simUiRestoreBtn'),
       dockCollapsedPill: document.getElementById('dockCollapsedPill'),
@@ -2478,6 +2473,7 @@
       btnTutSkipStep: document.getElementById('btnTutSkipStep'),
       btnExitTutorial: document.getElementById('btnExitTutorial'),
       simClockPill: document.getElementById('simClockPill'),
+      btnPanMode: document.getElementById('btnPanMode'),
       btnGridToggle: document.getElementById('btnGridToggle'),
       btnZoomFit: document.getElementById('btnZoomFit'),
       btnZoomOut: document.getElementById('btnZoomOut'),
@@ -3190,11 +3186,27 @@
       ctx.setTransform(scale * dpr, 0, 0, scale * dpr, ox * dpr, oy * dpr);
     }
 
+    function clampCameraPan() {
+      const rect = el.canvas.getBoundingClientRect();
+      if (!rect.width || !rect.height) return;
+      const baseScale = Math.min(rect.width / WORLD_W, rect.height / WORLD_H);
+      const scale = baseScale * state.cam.zoom;
+      const maxPanX = Math.max(rect.width * 0.45, WORLD_W * scale * 0.55);
+      const maxPanY = Math.max(rect.height * 0.45, WORLD_H * scale * 0.65);
+      state.cam.panX = Math.max(-maxPanX, Math.min(maxPanX, state.cam.panX));
+      state.cam.panY = Math.max(-maxPanY, Math.min(maxPanY, state.cam.panY));
+    }
+
     function screenToWorld(clientX, clientY) {
       const rect = el.canvas.getBoundingClientRect();
+      if (!rect.width || !rect.height) return { x: 0, y: 0 };
+      const baseScale = Math.min(rect.width / WORLD_W, rect.height / WORLD_H);
+      const scale = baseScale * state.cam.zoom;
+      const ox = (rect.width - WORLD_W * scale) * 0.5 + state.cam.panX;
+      const oy = (rect.height - WORLD_H * scale) * 0.5 + state.cam.panY;
       return {
-        x: (clientX - rect.left - viewTransform.ox) / viewTransform.scale,
-        y: (clientY - rect.top - viewTransform.oy) / viewTransform.scale
+        x: (clientX - rect.left - ox) / scale,
+        y: (clientY - rect.top - oy) / scale
       };
     }
 
@@ -3213,6 +3225,7 @@
       } else {
         state.cam.zoom = clamped;
       }
+      clampCameraPan();
       el.btnZoomReset.textContent = `${Math.round(state.cam.zoom * 100)}%`;
     }
 
@@ -3734,20 +3747,35 @@
         ctx.stroke();
       }
 
-      // タッチ操作時の指かぶり防止カーソルレティクル
+      // タッチ操作時の指ずらしカーソルレティクル（指先アンカー → ターゲット照準）
       if (state.touchActive && state.touchWorld) {
         const tw = state.touchWorld;
         ctx.save();
-        ctx.strokeStyle = 'rgba(34, 211, 238, 0.9)';
-        ctx.lineWidth = 1.6;
+        if (state.touchAnchorWorld) {
+          const aw = state.touchAnchorWorld;
+          ctx.strokeStyle = 'rgba(148, 163, 184, 0.45)';
+          ctx.lineWidth = 1.2;
+          ctx.setLineDash([3, 3]);
+          ctx.beginPath();
+          ctx.moveTo(aw.x, aw.y);
+          ctx.lineTo(tw.x, tw.y);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.fillStyle = 'rgba(148, 163, 184, 0.45)';
+          ctx.beginPath();
+          ctx.arc(aw.x, aw.y, 4, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.strokeStyle = 'rgba(34, 211, 238, 0.95)';
+        ctx.lineWidth = 1.8;
         ctx.beginPath();
-        ctx.arc(tw.x, tw.y, 12, 0, Math.PI * 2);
+        ctx.arc(tw.x, tw.y, 11, 0, Math.PI * 2);
         ctx.stroke();
         ctx.beginPath();
-        ctx.moveTo(tw.x - 18, tw.y); ctx.lineTo(tw.x - 7, tw.y);
-        ctx.moveTo(tw.x + 7, tw.y); ctx.lineTo(tw.x + 18, tw.y);
-        ctx.moveTo(tw.x, tw.y - 18); ctx.lineTo(tw.x, tw.y - 7);
-        ctx.moveTo(tw.x, tw.y + 7); ctx.lineTo(tw.x, tw.y + 18);
+        ctx.moveTo(tw.x - 16, tw.y); ctx.lineTo(tw.x - 6, tw.y);
+        ctx.moveTo(tw.x + 6, tw.y); ctx.lineTo(tw.x + 16, tw.y);
+        ctx.moveTo(tw.x, tw.y - 16); ctx.lineTo(tw.x, tw.y - 6);
+        ctx.moveTo(tw.x, tw.y + 6); ctx.lineTo(tw.x, tw.y + 16);
         ctx.stroke();
         ctx.restore();
       }
@@ -4155,6 +4183,8 @@
       el.simResultBanner.classList.toggle('hidden', !live);
       el.simResultBanner.classList.toggle('inline-flex', live);
       el.btnGridToggle.classList.toggle('hidden', live);
+      if (el.btnPanMode) el.btnPanMode.classList.toggle('hidden', live);
+      if (live) state.panMode = false;
       el.modeBadge.textContent = live ? '実行中' : '編集';
       el.modeBadge.className = live
         ? 'hidden md:inline-flex items-center text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40 shrink-0'
@@ -4351,8 +4381,8 @@
       // ポインタダウン（マウス＆タッチ統合）
       const onPointerDown = (clientX, clientY, button, shiftKey) => {
         closeAllPopups();
-        // 中ボタン or Shift+ドラッグでパン
-        if (button === 1 || (button === 0 && shiftKey)) {
+        // 中ボタン or Shift+ドラッグ or ✋パンモード or 実行中左ドラッグでパン
+        if (button === 1 || (button === 0 && (shiftKey || state.panMode || state.mode === 'sim'))) {
           state.cam.isPanning = true;
           state.cam.panStartScreenX = clientX;
           state.cam.panStartScreenY = clientY;
@@ -4486,7 +4516,8 @@
       window.addEventListener('mousemove', e => onPointerMove(e.clientX, e.clientY));
       window.addEventListener('mouseup', e => onPointerUp(e.clientX, e.clientY));
 
-      // スマホ向けマルチタッチ（ピンチズーム・2本指パン・1本指連続配置・長押しスポイト）
+      // スマホ向けマルチタッチ（ピンチズーム・2本指パン・誤配置ロールバック・指ずらしオフセット・実行中1本指パン・長押しスポイト）
+      const TOUCH_OFFSET_Y = -30;
       let pinchActive = false;
       let pinchStartDist = 0;
       let pinchStartZoom = 1;
@@ -4495,8 +4526,19 @@
       let touchLongPressTimer = null;
       let touchStartX = 0;
       let touchStartY = 0;
+      let touchStartTs = 0;
       let touchMoved = false;
       let eyedropperFired = false;
+      let touchSnapshotLen = -1;
+      let touchOneFingerPan = false;
+
+      const syncPanModeUI = () => {
+        if (!el.btnPanMode) return;
+        el.btnPanMode.className = state.panMode
+          ? 'ui-btn h-8 w-8 rounded-lg bg-cyan-500/25 border border-cyan-400 text-cyan-200 backdrop-blur-sm flex items-center justify-center'
+          : 'ui-btn h-8 w-8 rounded-lg bg-slate-950/85 border border-slate-700/80 text-slate-300 hover:bg-slate-800 backdrop-blur-sm flex items-center justify-center';
+        el.canvas.style.cursor = state.panMode ? 'grab' : 'crosshair';
+      };
 
       el.canvas.addEventListener('touchstart', e => {
         e.preventDefault();
@@ -4504,13 +4546,23 @@
         clearTimeout(touchLongPressTimer);
 
         if (e.touches.length === 2) {
-          // 2本指：ピンチズーム＋視点移動（1本指の途中描画をキャンセル）
-          if (state.isDrawing || state.bondDragActive) {
-            state.isDrawing = false;
-            state.bondDragActive = false;
-            state.linePreview = [];
+          // 2本指着地：直前に1本指が誤って置いたブロックがあれば自動ロールバック！
+          if ((state.isDrawing || state.bondDragActive) && touchSnapshotLen >= 0 && (performance.now() - touchStartTs) < 260) {
+            if (state.history.length > touchSnapshotLen) {
+              const prev = state.history.pop();
+              state.tris = prev.tris;
+              state.severedBonds = prev.severed;
+              syncUndoRedoUI();
+              updateTelemetryHUD();
+            }
           }
+          state.isDrawing = false;
+          state.bondDragActive = false;
+          state.linePreview = [];
           state.touchActive = false;
+          state.touchAnchorWorld = null;
+          touchOneFingerPan = false;
+          state.cam.isPanning = false;
           pinchActive = true;
           const t0 = e.touches[0], t1 = e.touches[1];
           pinchStartDist = Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY) || 1;
@@ -4524,34 +4576,49 @@
           const t = e.touches[0];
           touchStartX = t.clientX;
           touchStartY = t.clientY;
+          touchStartTs = performance.now();
           touchMoved = false;
           eyedropperFired = false;
-          state.touchActive = true;
-          state.touchWorld = screenToWorld(t.clientX, t.clientY);
+          touchSnapshotLen = state.history.length;
 
-          // 長押しスポイト＆ブロック詳細（配置前に判定できるよう既存ブロック上のみ）
-          if (state.mode === 'design') {
-            const w0 = state.touchWorld;
-            const existingTri = TriHexMath.worldToTri(w0.x, w0.y);
-            const hasExisting = existingTri && state.tris[existingTri.r][existingTri.c][existingTri.t];
-            if (hasExisting) {
-              touchLongPressTimer = setTimeout(() => {
-                if (!touchMoved && !pinchActive) {
-                  // 直前の誤配置があれば戻してスポイト＋詳細表示
-                  if (state.history.length > 0 && state.isDrawing) {
-                    const prev = state.history.pop();
-                    state.tris = prev.tris;
-                    state.severedBonds = prev.severed;
-                    state.isDrawing = false;
-                    syncUndoRedoUI();
-                    updateTelemetryHUD();
-                  }
-                  eyedropperFired = showBlockDetailAt(w0.x, w0.y);
-                }
-              }, 440);
-            }
+          // 実行中または✋視点移動モード中は1本指でスムーズにパン移動
+          if (state.mode === 'sim' || state.panMode) {
+            touchOneFingerPan = true;
+            state.cam.isPanning = true;
+            state.cam.panStartScreenX = t.clientX;
+            state.cam.panStartScreenY = t.clientY;
+            state.cam.panStartX = state.cam.panX;
+            state.cam.panStartY = state.cam.panY;
+            return;
           }
-          onPointerDown(t.clientX, t.clientY, 0, false);
+
+          touchOneFingerPan = false;
+          const aimX = t.clientX;
+          const aimY = t.clientY + TOUCH_OFFSET_Y;
+          state.touchActive = true;
+          state.touchAnchorWorld = screenToWorld(t.clientX, t.clientY);
+          state.touchWorld = screenToWorld(aimX, aimY);
+
+          // 長押しスポイト＆詳細インスペクタ（既存ブロック上）
+          const w0 = state.touchWorld;
+          const existingTri = TriHexMath.worldToTri(w0.x, w0.y);
+          const hasExisting = existingTri && state.tris[existingTri.r][existingTri.c][existingTri.t];
+          if (hasExisting) {
+            touchLongPressTimer = setTimeout(() => {
+              if (!touchMoved && !pinchActive) {
+                if (state.history.length > touchSnapshotLen && state.isDrawing) {
+                  const prev = state.history.pop();
+                  state.tris = prev.tris;
+                  state.severedBonds = prev.severed;
+                  state.isDrawing = false;
+                  syncUndoRedoUI();
+                  updateTelemetryHUD();
+                }
+                eyedropperFired = showBlockDetailAt(w0.x, w0.y);
+              }
+            }, 420);
+          }
+          onPointerDown(aimX, aimY, 0, false);
         }
       }, { passive: false });
 
@@ -4570,34 +4637,47 @@
             pinchLastMidY = midY;
             return;
           }
-          // 2本指パン
           state.cam.panX += (midX - pinchLastMidX);
           state.cam.panY += (midY - pinchLastMidY);
           pinchLastMidX = midX;
           pinchLastMidY = midY;
-          // ピンチズーム
           setZoom(pinchStartZoom * (dist / pinchStartDist), midX, midY);
           return;
         }
 
         if (e.touches.length === 1 && !pinchActive && !eyedropperFired) {
           const t = e.touches[0];
+          if (touchOneFingerPan) {
+            state.cam.panX = state.cam.panStartX + (t.clientX - state.cam.panStartScreenX);
+            state.cam.panY = state.cam.panStartY + (t.clientY - state.cam.panStartScreenY);
+            clampCameraPan();
+            return;
+          }
           if (Math.hypot(t.clientX - touchStartX, t.clientY - touchStartY) > 10) {
             touchMoved = true;
             clearTimeout(touchLongPressTimer);
           }
-          state.touchWorld = screenToWorld(t.clientX, t.clientY);
-          onPointerMove(t.clientX, t.clientY);
+          const aimX = t.clientX;
+          const aimY = t.clientY + TOUCH_OFFSET_Y;
+          state.touchAnchorWorld = screenToWorld(t.clientX, t.clientY);
+          state.touchWorld = screenToWorld(aimX, aimY);
+          onPointerMove(aimX, aimY);
         }
       }, { passive: false });
 
       el.canvas.addEventListener('touchend', e => {
         clearTimeout(touchLongPressTimer);
-        if (e.touches.length < 2 && pinchActive) {
+        if (pinchActive) {
           if (e.touches.length === 0) pinchActive = false;
           return;
         }
+        if (touchOneFingerPan) {
+          touchOneFingerPan = false;
+          state.cam.isPanning = false;
+          return;
+        }
         state.touchActive = false;
+        state.touchAnchorWorld = null;
         state.touchWorld = null;
         if (eyedropperFired) {
           eyedropperFired = false;
@@ -4605,7 +4685,29 @@
           return;
         }
         const t = e.changedTouches[0];
-        onPointerUp(t ? t.clientX : undefined, t ? t.clientY : undefined);
+        onPointerUp(t ? t.clientX : undefined, t ? t.clientY + TOUCH_OFFSET_Y : undefined);
+      });
+
+      // ✋ 視点移動モードトグル＆ブロック詳細から即時削除
+      el.btnPanMode.addEventListener('click', () => {
+        state.panMode = !state.panMode;
+        syncPanModeUI();
+        SoundFX.click(state.panMode ? 580 : 420);
+        if (state.panMode) flashToolHint('視点移動モード: 1本指で画面をパン移動', '再タップで編集に戻る');
+      });
+
+      el.btnDeleteSelectedBlock.addEventListener('click', () => {
+        const st = state.selectedBlockTri;
+        if (st && state.tris[st.r]?.[st.c]?.[st.t]) {
+          pushUndo();
+          eraseTriangle(st.r, st.c, st.t);
+          SoundFX.click(310);
+          haptic(10);
+          updateTelemetryHUD();
+          TutorialMgr.checkProgress();
+        }
+        el.blockInfoPill.classList.add('hidden');
+        state.selectedBlockTri = null;
       });
 
       // ポップアップ開閉（素材・形状・メニュー）
@@ -4675,8 +4777,10 @@
         SoundFX.click(540);
       });
 
-      // ツール切替ボタン
+      // ツール切替ボタン（ツールを選んだらパンモードを自動解除）
       const pickTool = (t, freq) => {
+        state.panMode = false;
+        syncPanModeUI();
         state.tool = t;
         SoundFX.click(freq);
         haptic(6);
@@ -4959,7 +5063,7 @@
       requestAnimationFrame(mainLoop);
     }
 
-    window.onload = function () {
+    function bootApp() {
       buildMaterialPatterns();
       buildElementChips();
       syncToolUI(false);
@@ -4974,7 +5078,12 @@
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('./sw.js').catch(() => {});
       }
-    };
+    }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', bootApp);
+    } else {
+      bootApp();
+    }
   })();
   </script>
 </body>
