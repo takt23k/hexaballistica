@@ -160,6 +160,7 @@
       <select id="presetSelect" class="w-full h-9 bg-slate-900 border border-slate-700/80 hover:border-slate-500 rounded-lg px-2.5 text-xs font-medium text-slate-100 cursor-pointer focus:outline-none focus:border-cyan-400 truncate">
         <option value="" disabled selected>兵器＆ステージを選択...</option>
         <option value="cannon">① 火薬砲 — 装甲タワー粉砕</option>
+        <option value="mech_lab">★ 機構テスト砲 — センサー×角度調整×自動装填</option>
         <option value="recoilless">② 無反動楔砲 — 背面保護・精密貫通</option>
         <option value="ricochet">③ 60°跳弾砲 — 高壁バンクショット</option>
         <option value="mortar">④ 60°迫撃砲 — 要塞越え曲射爆撃</option>
@@ -237,6 +238,47 @@
             <b id="simHeatVal" class="font-mono-tech text-amber-300">0%</b>
             <span id="simReloadVal" class="font-mono-tech text-[10px] text-emerald-300 ml-1"></span>
           </span>
+        </div>
+
+        <!-- 機構パラメーター設定バー（センサー・角度調整・装填機が配置されている時に表示） -->
+        <div id="mechParamBar" class="hidden pointer-events-auto items-center gap-1.5 px-2 py-1.5 rounded-xl bg-slate-950/92 border border-violet-500/45 backdrop-blur-sm text-[10px] sm:text-[11px] text-slate-200 flex-wrap w-[calc(100vw-24px)] sm:w-auto max-w-none">
+          <span class="font-bold text-violet-300 shrink-0 whitespace-nowrap">機構設定</span>
+          <label class="inline-flex items-center gap-1 bg-slate-900 border border-slate-700 rounded-md px-1.5 py-0.5 whitespace-nowrap shrink-0">
+            <span class="text-[10px] text-emerald-300 whitespace-nowrap">装填</span>
+            <select id="mechReloadSelect" class="bg-transparent font-mono-tech text-[10px] sm:text-[11px] font-bold text-slate-100 focus:outline-none">
+              <option value="1.0">1.0s</option>
+              <option value="1.5">1.5s</option>
+              <option value="2.0" selected>2.0s</option>
+              <option value="3.0">3.0s</option>
+            </select>
+          </label>
+          <label class="inline-flex items-center gap-1 bg-slate-900 border border-slate-700 rounded-md px-1.5 py-0.5 whitespace-nowrap shrink-0">
+            <span class="text-[10px] text-amber-300 whitespace-nowrap">弾消滅</span>
+            <select id="mechLifetimeSelect" class="bg-transparent font-mono-tech text-[10px] sm:text-[11px] font-bold text-slate-100 focus:outline-none">
+              <option value="3">3秒</option>
+              <option value="5" selected>5秒</option>
+              <option value="8">8秒</option>
+              <option value="0">消えない</option>
+            </select>
+          </label>
+          <label class="inline-flex items-center gap-1 bg-slate-900 border border-slate-700 rounded-md px-1.5 py-0.5 whitespace-nowrap shrink-0">
+            <span class="text-[10px] text-cyan-300 whitespace-nowrap">角度</span>
+            <select id="mechAngleSelect" class="bg-transparent font-mono-tech text-[10px] sm:text-[11px] font-bold text-slate-100 focus:outline-none">
+              <option value="auto" selected>センサー追尾</option>
+              <option value="-25">-25° 仰角</option>
+              <option value="-15">-15° 仰角</option>
+              <option value="-8">-8° 仰角</option>
+              <option value="0">0° 水平</option>
+            </select>
+          </label>
+          <label class="inline-flex items-center gap-1 bg-slate-900 border border-slate-700 rounded-md px-1.5 py-0.5 whitespace-nowrap shrink-0">
+            <span class="text-[10px] text-violet-300 whitespace-nowrap">探知</span>
+            <select id="mechSensorRangeSelect" class="bg-transparent font-mono-tech text-[10px] sm:text-[11px] font-bold text-slate-100 focus:outline-none">
+              <option value="450">450px</option>
+              <option value="700" selected>700px</option>
+              <option value="950">950px</option>
+            </select>
+          </label>
         </div>
 
         <!-- 防衛戦（実物理TD）ステータスバー -->
@@ -418,6 +460,7 @@
           <select id="presetSelectMobile" class="w-full h-10 bg-slate-950 border border-slate-700 rounded-xl px-3 text-xs font-medium text-slate-100 focus:outline-none focus:border-cyan-400">
             <option value="" disabled selected>兵器＆ステージを選択...</option>
             <option value="cannon">① 火薬砲 — 装甲タワー粉砕</option>
+            <option value="mech_lab">★ 機構テスト砲 — センサー×角度調整×自動装填</option>
             <option value="recoilless">② 無反動楔砲 — 背面保護・精密貫通</option>
             <option value="ricochet">③ 60°跳弾砲 — 高壁バンクショット</option>
             <option value="mortar">④ 60°迫撃砲 — 要塞越え曲射爆撃</option>
@@ -1635,7 +1678,21 @@
             })),
             bonds: shellBodyRef.bonds.map(bd => ({ a: bd.a, b: bd.b, maxStress: bd.maxStress }))
           } : null;
-          // センサーがある場合は、敵を検知するまで初回点火を待つ（防衛戦時）
+          // 角度調整モーター（rotator）の実際の回転支点（ヒンジ座標）を算出
+          const rotTris = gunBodyRef.tris.filter(t => t.matId === 'rotator');
+          let pivotLocalX = 0, pivotLocalY = 0, anchorX = gunBodyRef.x, anchorY = gunBodyRef.y;
+          if (rotTris.length > 0) {
+            pivotLocalX = rotTris.reduce((s, t) => s + t.lcx, 0) / rotTris.length;
+            pivotLocalY = rotTris.reduce((s, t) => s + t.lcy, 0) / rotTris.length;
+            anchorX = gunBodyRef.x + pivotLocalX;
+            anchorY = gunBodyRef.y + pivotLocalY;
+          }
+          if (shellBodyRef) {
+            shellBodyRef.isFiredShell = true;
+            shellBodyRef.shellAge = 0;
+            shellBodyRef.shellFired = false;
+          }
+          // センサーがある場合は、敵/標的を検知するまで初回点火を待つ（防衛戦時）
           if (hasSensor && state.tdMode) {
             for (const tr of gunBodyRef.tris) {
               if (MATERIALS[tr.matId].kind === 'energy') tr.ignited = false;
@@ -1646,6 +1703,10 @@
             hasLoader,
             hasSensor,
             hasRotator,
+            pivotLocalX,
+            pivotLocalY,
+            anchorX,
+            anchorY,
             chargeTemplates,
             shellTemplate,
             reloadTimer: 0,
@@ -1663,7 +1724,7 @@
         }
       },
 
-      createBodyFromTris(tris, bonds, vx, vy, omega) {
+      createBodyFromTris(tris, bonds, vx, vy, omega, initialAngle = 0) {
         let totalMass = 0;
         let cx = 0, cy = 0;
         for (const tr of tris) {
@@ -1675,13 +1736,22 @@
         cx /= Math.max(0.001, totalMass);
         cy /= Math.max(0.001, totalMass);
 
+        const invCos = Math.cos(-initialAngle);
+        const invSin = Math.sin(-initialAngle);
         let inertia = 0;
         for (const tr of tris) {
           const m = MATERIALS[tr.matId].density * 0.85;
-          tr.lcx = tr.wx - cx;
-          tr.lcy = tr.wy - cy;
+          const dx = tr.wx - cx;
+          const dy = tr.wy - cy;
+          tr.lcx = dx * invCos - dy * invSin;
+          tr.lcy = dx * invSin + dy * invCos;
           for (let k = 0; k < 3; k++) {
-            tr.lv[k] = { x: tr.wv[k].x - cx, y: tr.wv[k].y - cy };
+            const vx0 = tr.wv[k].x - cx;
+            const vy0 = tr.wv[k].y - cy;
+            tr.lv[k] = {
+              x: vx0 * invCos - vy0 * invSin,
+              y: vx0 * invSin + vy0 * invCos
+            };
           }
           const r2 = tr.lcx * tr.lcx + tr.lcy * tr.lcy;
           inertia += m * (r2 + 120);
@@ -1693,7 +1763,7 @@
           y: cy,
           vx,
           vy,
-          angle: 0,
+          angle: initialAngle,
           omega,
           mass: totalMass,
           invMass: 1 / Math.max(0.1, totalMass),
@@ -1976,21 +2046,22 @@
           }
         }
 
-        // 4.5 センサー認識 → 角度調整（rotator）→ 自動装填（loader）＆熱蓄積
+        // 4.5 センサー認識 → 角度調整（rotatorヒンジ旋回）→ 自動装填（loader）＆熱蓄積＆弾消滅タイマー
         if (this.reloadSystem) {
           const rs = this.reloadSystem;
           const gun = this.bodies.find(b => b.id === rs.gunBodyId) || this.bodies.find(b => b.isWeaponBody);
           if (gun) {
             rs.gunBodyId = gun.id;
-            // センサーによる標的認識（防衛戦中は敵、試射中は右側の標的剛体）
+            const sensorRange = state.sensorRange || 700;
+            // センサーによる標的認識（探知距離内の最寄り標的）
             let target = null;
             let bestDist = Infinity;
             for (const b of this.bodies) {
-              if (b === gun || b.id === rs.lastShellId) continue;
-              const isTarget = state.tdMode ? b.isEnemy : (b.x > gun.x + 220);
+              if (b === gun || b.isFiredShell) continue;
+              const isTarget = state.tdMode ? b.isEnemy : (b.x > gun.x + 200);
               if (!isTarget) continue;
               const d = Math.hypot(b.x - gun.x, b.y - gun.y);
-              if (d < 860 && d < bestDist) {
+              if (d <= sensorRange && d < bestDist) {
                 bestDist = d;
                 target = b;
               }
@@ -1998,28 +2069,48 @@
             rs.detectedTarget = target ? { x: target.x, y: target.y } : null;
             rs.sensorLocked = Boolean(target);
 
-            // 角度調整モーター（rotator）：センサー信号で砲身仰角を制御
-            if (rs.hasRotator && target) {
-              const dx = Math.max(80, target.x - gun.x);
-              const dy = target.y - gun.y;
-              const desiredAngle = Math.max(-0.28, Math.min(0.06, Math.atan2(dy - dx * 0.14, dx)));
+            // 角度調整モーター（rotator）：rotatorブロックを支点ヒンジとして砲身全体を滑らかに仰角旋回！
+            if (rs.hasRotator) {
+              let desiredAngle = 0;
+              if (state.rotatorMode === 'auto') {
+                if (target) {
+                  const dx = Math.max(90, target.x - rs.anchorX);
+                  const dy = target.y - rs.anchorY;
+                  // 距離に応じた重力補正つき仰角
+                  desiredAngle = Math.max(-0.52, Math.min(0.14, Math.atan2(dy - dx * 0.22, dx)));
+                }
+              } else {
+                desiredAngle = (parseFloat(state.rotatorMode) || 0) * Math.PI / 180;
+              }
               rs.targetAngle = desiredAngle;
               const diff = desiredAngle - gun.angle;
+              const stepAng = Math.max(-1.15 * dt, Math.min(1.15 * dt, diff * 5.0 * dt));
               gun.sleeping = false;
-              gun.angle += Math.max(-0.55 * dt, Math.min(0.55 * dt, diff * 3.5 * dt));
-              gun.omega *= 0.5;
+              gun.angle += stepAng;
+              // ヒンジ支点(anchorX, anchorY)を固定して回転
+              const cos = Math.cos(gun.angle), sin = Math.sin(gun.angle);
+              gun.x = rs.anchorX - (rs.pivotLocalX * cos - rs.pivotLocalY * sin);
+              gun.y = rs.anchorY - (rs.pivotLocalX * sin + rs.pivotLocalY * cos);
+              gun.vx = 0;
+              gun.vy = 0;
+              gun.omega = 0;
               this.updateBodyWorldVerts(gun);
+              // 地面にめり込んだ場合は上へ補正
+              if (gun.aabb.maxY > GROUND_Y) {
+                gun.y -= (gun.aabb.maxY - GROUND_Y);
+                this.updateBodyWorldVerts(gun);
+              }
             }
 
             // 薬室に未消費の火薬が残っているか確認
             const liveEnergy = gun.tris.filter(t => MATERIALS[t.matId].kind === 'energy' && !t.consumed && t.energyLeft > 0);
             const hasUnignited = liveEnergy.some(t => !t.ignited);
 
-            // センサー → 火薬点火トリガー
-            if (hasUnignited && (!rs.hasSensor || rs.sensorLocked)) {
+            // センサー → 火薬点火トリガー（角度調整がある場合は目標角度に近づいたら発射）
+            const aimReady = !rs.hasRotator || Math.abs((rs.targetAngle || 0) - gun.angle) < 0.08 || this.simTime > 0.45;
+            if (hasUnignited && aimReady && (!rs.hasSensor || rs.sensorLocked)) {
               for (const t of liveEnergy) t.ignited = true;
               rs.shotsFired++;
-              // 発射熱を蓄積（熱容量が小さい安価な軽質砲身ほど一気に過熱！）
               const heatAdd = Math.min(62, 1650 / Math.max(24, gun.heatCapacity || 60));
               gun.heat = Math.min(100, (gun.heat || 0) + heatAdd);
               SoundFX.energyPulse(0.85);
@@ -2028,11 +2119,10 @@
             // 自動装填機（loader）：発射後に指定連射間隔で火薬＆弾丸を再装填
             if (rs.hasLoader && liveEnergy.length === 0 && rs.chargeTemplates.length > 0) {
               rs.reloadTimer += dt;
-              const interval = Math.max(0.8, state.reloadInterval || 1.8);
+              const interval = Math.max(0.8, state.reloadInterval || 2.0);
               if (rs.reloadTimer >= interval && (!rs.hasSensor || rs.sensorLocked)) {
                 rs.reloadTimer = 0;
                 const cos = Math.cos(gun.angle), sin = Math.sin(gun.angle);
-                // 薬室火薬を再装填
                 for (const ct of rs.chargeTemplates) {
                   const mat = MATERIALS[ct.matId];
                   const wx = gun.x + ct.lcx * cos - ct.lcy * sin;
@@ -2052,7 +2142,6 @@
                     hitFlash: 0
                   });
                 }
-                // 弾丸を再装填
                 if (rs.shellTemplate) {
                   const st = rs.shellTemplate;
                   const sx = gun.x + st.relX * cos - st.relY * sin;
@@ -2073,8 +2162,10 @@
                     };
                   });
                   const newBonds = st.bonds.map(bd => ({ a: bd.a, b: bd.b, damage: 0, maxStress: bd.maxStress }));
-                  const newShell = this.createBodyFromTris(newTris, newBonds, 0, 0, 0);
-                  newShell.angle = gun.angle;
+                  const newShell = this.createBodyFromTris(newTris, newBonds, 0, 0, 0, gun.angle);
+                  newShell.isFiredShell = true;
+                  newShell.shellAge = 0;
+                  newShell.shellFired = true;
                   this.updateBodyWorldVerts(newShell);
                   this.bodies.push(newShell);
                   rs.lastShellId = newShell.id;
@@ -2084,6 +2175,27 @@
                 gun.heat = Math.min(100, (gun.heat || 0) + heatAdd);
                 SoundFX.energyPulse(0.85);
                 this.emitEvent(`🔄 自動装填→発射 (#${rs.shotsFired} / 熱 ${Math.round(gun.heat)}%)`, gun.heat > 75 ? 'danger' : 'info');
+              }
+            }
+          }
+        }
+
+        // 4.6 撃った弾の消滅タイマー（state.shellLifetime 秒後にフェードアウト消滅）
+        if (state.shellLifetime > 0) {
+          for (let i = this.bodies.length - 1; i >= 0; i--) {
+            const b = this.bodies[i];
+            if (!b.isFiredShell) continue;
+            if (!b.shellFired && (Math.hypot(b.vx, b.vy) > 55 || this.simTime > 0.6)) {
+              b.shellFired = true;
+            }
+            if (b.shellFired) {
+              b.shellAge = (b.shellAge || 0) + dt;
+              if (b.shellAge >= state.shellLifetime) {
+                for (let k = 0; k < 5; k++) {
+                  const a = Math.random() * Math.PI * 2;
+                  this.spawnParticle(b.x, b.y, Math.cos(a) * 45, Math.sin(a) * 45 - 20, 0.3, '#67e8f9', 2.4);
+                }
+                this.bodies.splice(i, 1);
               }
             }
           }
@@ -2492,16 +2604,39 @@
           const ry = avgY - body.y;
           const childVx = body.vx - body.omega * ry;
           const childVy = body.vy + body.omega * rx;
-          const newBody = this.createBodyFromTris(newTris, newBonds, childVx, childVy, body.omega);
-          // 親が砲台ボディだった場合、最大の生存連結成分へ熱・熱容量・自動装填IDを引き継ぐ
+          const newBody = this.createBodyFromTris(newTris, newBonds, childVx, childVy, body.omega, body.angle);
+          // 親が砲台ボディだった場合、最大の生存連結成分へ熱・熱容量・自動装填IDを引き継ぎ、重心移動分を補正
           if (body.isWeaponBody && newTris.length >= 16) {
             newBody.isWeaponBody = true;
             newBody.heat = body.heat || 0;
             newBody.heatCapacity = body.heatCapacity || 60;
             newBody.coolingRate = body.coolingRate || 14;
             if (this.reloadSystem && this.reloadSystem.gunBodyId === body.id) {
-              this.reloadSystem.gunBodyId = newBody.id;
+              const rs = this.reloadSystem;
+              rs.gunBodyId = newBody.id;
+              const invC = Math.cos(-body.angle);
+              const invS = Math.sin(-body.angle);
+              const dWx = newBody.x - body.x;
+              const dWy = newBody.y - body.y;
+              const dLx = dWx * invC - dWy * invS;
+              const dLy = dWx * invS + dWy * invC;
+              rs.pivotLocalX -= dLx;
+              rs.pivotLocalY -= dLy;
+              for (const ct of rs.chargeTemplates) {
+                ct.lcx -= dLx;
+                ct.lcy -= dLy;
+                for (const p of ct.lv) { p.x -= dLx; p.y -= dLy; }
+              }
+              if (rs.shellTemplate) {
+                rs.shellTemplate.relX -= dLx;
+                rs.shellTemplate.relY -= dLy;
+              }
             }
+          }
+          if (body.isFiredShell) {
+            newBody.isFiredShell = true;
+            newBody.shellAge = body.shellAge || 0;
+            newBody.shellFired = Boolean(body.shellFired);
           }
           if (body.isEnemy) {
             newBody.isEnemy = true;
@@ -2680,7 +2815,10 @@
       signalWires: [], // [{ from:{r,c}, to:{r,c}, kind:'aim'|'fire' }]
       wireDragFrom: null,
       wireDragPos: null,
-      reloadInterval: 1.8, // 秒（低速2.8 / 標準1.8 / 高速1.0）
+      reloadInterval: 2.0,   // 自動装填間隔（秒）
+      shellLifetime: 5.0,    // 撃った弾の消滅時間（秒、0=消えない）
+      rotatorMode: 'auto',   // 'auto'（センサー追尾） | 固定角度(deg文字列)
+      sensorRange: 700,      // センサー探知距離（px）
       tdMode: false,
       bondSubMode: 'cut', // 'cut' | 'join'
       autoBond: true,
@@ -2867,6 +3005,51 @@
             zone: { x1: 745, y1: 295, x2: 875, y2: 486 }
           },
           ...buildGroupedPreset([gunBody, shell, ...makeFlatTargetTower(765, 855, 7)])
+        };
+      }
+
+      if (key === 'mech_lab') {
+        // ★ 機構テスト砲：一体構造の砲身＋センサー（上面）＋角度調整ヒンジ（底部支点）＋自動装填機（後部）＋信号配線
+        const chargeTris = [
+          ...bandLine(11, 168, 204, 'energy_pulse'),
+          ...bandLine(12, 168, 204, 'energy_pulse')
+        ];
+        const rotTris = bandLine(14, 175, 220, 'rotator');
+        const sensorTris = bandLine(9, 215, 260, 'sensor');
+        const gunBody = [
+          // 一体型のC字砲身（上下壁 bandLine(10) / bandLine(13) が砲尾まで貫通し、火薬が消えても絶対に分離しない！）
+          ...bandLine(13, 105, 365, 'dense'),
+          ...bandLine(12, 105, 150, 'dense'),
+          ...bandLine(11, 105, 150, 'dense'),
+          ...bandLine(10, 105, 365, 'dense'),
+          ...chargeTris,
+          // 砲身後部に自動装填機
+          ...bandLine(12, 70, 105, 'loader'),
+          ...bandLine(11, 70, 105, 'loader'),
+          // 砲身底部の回転支点に角度調整モーター
+          ...rotTris,
+          // 砲身上面にしっかり結合された照準センサー
+          ...sensorTris
+        ];
+        const shell = [
+          ...bandLine(12, 225, 295, 'slick'),
+          ...bandLine(11, 225, 295, 'slick')
+        ];
+        const s0 = sensorTris[Math.floor(sensorTris.length / 2)] || [5, 4];
+        const r0 = rotTris[Math.floor(rotTris.length / 2)] || [7, 3];
+        const c0 = chargeTris[Math.floor(chargeTris.length / 2)] || [6, 3];
+        return {
+          name: '★ 機構テスト砲 — センサー×角度調整×自動装填',
+          autoIgnite: false,
+          wires: [
+            { from: { r: s0[0], c: s0[1] }, to: { r: r0[0], c: r0[1] }, kind: 'aim' },
+            { from: { r: s0[0], c: s0[1] }, to: { r: c0[0], c: c0[1] }, kind: 'fire' }
+          ],
+          goal: {
+            label: 'センサー追尾・角度調整・自動装填＆弾消滅を確認せよ',
+            zone: { x1: 745, y1: 295, x2: 875, y2: 486 }
+          },
+          ...buildGroupedPreset([gunBody, shell, ...makeFlatTargetTower(765, 855, 6)])
         };
       }
 
@@ -3239,6 +3422,11 @@
       tdBaseHpBadge: document.getElementById('tdBaseHpBadge'),
       tdKillBadge: document.getElementById('tdKillBadge'),
       tdPresetPicker: document.getElementById('tdPresetPicker'),
+      mechParamBar: document.getElementById('mechParamBar'),
+      mechReloadSelect: document.getElementById('mechReloadSelect'),
+      mechLifetimeSelect: document.getElementById('mechLifetimeSelect'),
+      mechAngleSelect: document.getElementById('mechAngleSelect'),
+      mechSensorRangeSelect: document.getElementById('mechSensorRangeSelect'),
       btnAutoBond: document.getElementById('btnAutoBond'),
       btnUndo: document.getElementById('btnUndo'),
       btnRedo: document.getElementById('btnRedo'),
@@ -4214,11 +4402,91 @@
     }
 
     function drawSignalWiresAndSensors(timeSec) {
-      // 設計モードの信号配線描画
+      // 設計モードの信号配線＋センサー走査コーン＆機構アイコン描画（各機構の重心に1つだけ綺麗に描画）
       if (state.mode === 'design') {
+        const mechSum = {
+          sensor: { x: 0, y: 0, n: 0 },
+          rotator: { x: 0, y: 0, n: 0 },
+          loader: { x: 0, y: 0, n: 0 }
+        };
+        for (let r = 0; r < GRID_ROWS; r++) {
+          for (let c = 0; c < GRID_COLS; c++) {
+            const mats = state.tris[r][c];
+            for (let t = 0; t < 6; t++) {
+              const m = mats[t];
+              if (m && mechSum[m]) {
+                const tc = TriHexMath.triCentroid(r, c, t);
+                mechSum[m].x += tc.x;
+                mechSum[m].y += tc.y;
+                mechSum[m].n++;
+              }
+            }
+          }
+        }
+        if (mechSum.sensor.n > 0) {
+          const sx = mechSum.sensor.x / mechSum.sensor.n;
+          const sy = mechSum.sensor.y / mechSum.sensor.n;
+          ctx.save();
+          ctx.fillStyle = 'rgba(139, 92, 246, 0.09)';
+          ctx.strokeStyle = 'rgba(196, 181, 253, 0.32)';
+          ctx.lineWidth = 1.2;
+          ctx.beginPath();
+          ctx.moveTo(sx, sy);
+          ctx.arc(sx, sy, Math.min(state.sensorRange || 700, 320), -0.35, 0.22);
+          ctx.closePath();
+          ctx.fill();
+          ctx.stroke();
+          ctx.restore();
+        }
+        if (mechSum.rotator.n > 0) {
+          const rx = mechSum.rotator.x / mechSum.rotator.n;
+          const ry = mechSum.rotator.y / mechSum.rotator.n;
+          ctx.save();
+          ctx.strokeStyle = '#67e8f9';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(rx, ry, 10, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.fillStyle = '#06b6d4';
+          ctx.beginPath();
+          ctx.arc(rx, ry, 3.2, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+        if (mechSum.loader.n > 0) {
+          const lx = mechSum.loader.x / mechSum.loader.n;
+          const ly = mechSum.loader.y / mechSum.loader.n;
+          ctx.save();
+          ctx.strokeStyle = '#6ee7b7';
+          ctx.lineWidth = 2.2;
+          ctx.beginPath();
+          ctx.arc(lx, ly, 9, -0.5, Math.PI * 1.45);
+          ctx.stroke();
+          ctx.restore();
+        }
+        const wireAnchor = (r, c) => {
+          if (r >= 0 && r < GRID_ROWS && c >= 0 && c < GRID_COLS) {
+            const mats = state.tris[r][c];
+            let mx = 0, my = 0, mcnt = 0;
+            let ax = 0, ay = 0, cnt = 0;
+            for (let t = 0; t < 6; t++) {
+              const m = mats[t];
+              if (m) {
+                const tc = TriHexMath.triCentroid(r, c, t);
+                ax += tc.x; ay += tc.y; cnt++;
+                if (m === 'sensor' || m === 'rotator' || m === 'loader' || m === 'energy_pulse' || m === 'energy_stream') {
+                  mx += tc.x; my += tc.y; mcnt++;
+                }
+              }
+            }
+            if (mcnt > 0) return { x: mx / mcnt, y: my / mcnt };
+            if (cnt > 0) return { x: ax / cnt, y: ay / cnt };
+          }
+          return TriHexMath.hexCenter(r, c);
+        };
         for (const w of state.signalWires) {
-          const p1 = TriHexMath.hexCenter(w.from.r, w.from.c);
-          const p2 = TriHexMath.hexCenter(w.to.r, w.to.c);
+          const p1 = wireAnchor(w.from.r, w.from.c);
+          const p2 = wireAnchor(w.to.r, w.to.c);
           ctx.save();
           ctx.strokeStyle = w.kind === 'aim' ? '#22d3ee' : '#fbbf24';
           ctx.lineWidth = 2.2;
@@ -4246,25 +4514,69 @@
           ctx.stroke();
           ctx.restore();
         }
-      } else if (PhysicsEngine.reloadSystem && PhysicsEngine.reloadSystem.hasSensor) {
+      } else if (PhysicsEngine.reloadSystem) {
         const rs = PhysicsEngine.reloadSystem;
         const gun = PhysicsEngine.bodies.find(b => b.id === rs.gunBodyId);
         if (gun) {
-          const sensorTri = gun.tris.find(t => t.matId === 'sensor' && t.hp > 0);
-          if (sensorTri) {
+          // ヒンジ支点リング＆現在仰角ラベル
+          if (rs.hasRotator) {
             ctx.save();
-            // センサー走査ビーム＆ロックオン線
-            if (rs.detectedTarget) {
-              ctx.strokeStyle = 'rgba(196, 181, 253, 0.55)';
-              ctx.lineWidth = 1.6;
-              ctx.setLineDash([5, 4]);
+            ctx.strokeStyle = '#67e8f9';
+            ctx.lineWidth = 2.2;
+            ctx.beginPath();
+            ctx.arc(rs.anchorX, rs.anchorY, 10, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.fillStyle = '#ecfeff';
+            ctx.font = 'bold 10px JetBrains Mono';
+            ctx.textAlign = 'center';
+            ctx.fillText(`${Math.round(gun.angle * 180 / Math.PI)}°`, rs.anchorX, rs.anchorY + 22);
+            ctx.restore();
+          }
+          // 装填進捗リング
+          if (rs.hasLoader) {
+            const loaderTri = gun.tris.find(t => t.matId === 'loader' && t.hp > 0);
+            if (loaderTri) {
+              const prog = Math.min(1, rs.reloadTimer / Math.max(0.8, state.reloadInterval || 2.0));
+              ctx.save();
+              ctx.strokeStyle = 'rgba(16, 185, 129, 0.3)';
+              ctx.lineWidth = 3;
+              ctx.beginPath();
+              ctx.arc(loaderTri.wx, loaderTri.wy, 11, 0, Math.PI * 2);
+              ctx.stroke();
+              ctx.strokeStyle = '#34d399';
+              ctx.beginPath();
+              ctx.arc(loaderTri.wx, loaderTri.wy, 11, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * prog);
+              ctx.stroke();
+              ctx.restore();
+            }
+          }
+          // センサー走査ビーム＆ロックオン線
+          if (rs.hasSensor) {
+            const sensorTri = gun.tris.find(t => t.matId === 'sensor' && t.hp > 0);
+            if (sensorTri) {
+              ctx.save();
+              ctx.fillStyle = 'rgba(139, 92, 246, 0.06)';
               ctx.beginPath();
               ctx.moveTo(sensorTri.wx, sensorTri.wy);
-              ctx.lineTo(rs.detectedTarget.x, rs.detectedTarget.y);
-              ctx.stroke();
-              ctx.setLineDash([]);
+              ctx.arc(sensorTri.wx, sensorTri.wy, Math.min(state.sensorRange || 700, 360), gun.angle - 0.32, gun.angle + 0.22);
+              ctx.closePath();
+              ctx.fill();
+              if (rs.detectedTarget) {
+                ctx.strokeStyle = 'rgba(196, 181, 253, 0.65)';
+                ctx.lineWidth = 1.8;
+                ctx.setLineDash([5, 4]);
+                ctx.beginPath();
+                ctx.moveTo(sensorTri.wx, sensorTri.wy);
+                ctx.lineTo(rs.detectedTarget.x, rs.detectedTarget.y);
+                ctx.stroke();
+                ctx.setLineDash([]);
+                ctx.fillStyle = '#c4b5fd';
+                ctx.beginPath();
+                ctx.arc(rs.detectedTarget.x, rs.detectedTarget.y, 4.5, 0, Math.PI * 2);
+                ctx.fill();
+              }
+              ctx.restore();
             }
-            ctx.restore();
           }
         }
       }
@@ -4589,8 +4901,15 @@
     }
 
     function drawSimulationLayer() {
-      // 剛体ごとの三角形＆結合輪郭を描画
+      // 剛体ごとの三角形＆結合輪郭を描画（弾消滅直前はフェードアウト）
       for (const body of PhysicsEngine.bodies) {
+        let bodyAlpha = 1;
+        if (body.isFiredShell && body.shellFired && state.shellLifetime > 0) {
+          const rem = state.shellLifetime - (body.shellAge || 0);
+          if (rem < 0.7) bodyAlpha = Math.max(0.12, rem / 0.7);
+        }
+        ctx.save();
+        ctx.globalAlpha = bodyAlpha;
         for (const tr of body.tris) {
           if (tr.hp <= 0 || tr.consumed) continue;
           const mat = MATERIALS[tr.matId];
@@ -4676,6 +4995,7 @@
             ctx.stroke();
           }
         }
+        ctx.restore();
       }
 
       // 衝突スパーク可視化
@@ -4915,6 +5235,20 @@
         el.statDamageCount.textContent = '0 / 0';
         el.statSpeedPeak.textContent = '0 / 0';
         el.simClockPill.textContent = '0.00s';
+        // センサー・角度調整・装填機が1つでもあれば機構設定バーを表示
+        if (el.mechParamBar) {
+          let hasMech = false;
+          for (let r = 0; r < GRID_ROWS && !hasMech; r++) {
+            for (let c = 0; c < GRID_COLS && !hasMech; c++) {
+              for (let t = 0; t < 6; t++) {
+                const m = state.tris[r][c][t];
+                if (m === 'sensor' || m === 'rotator' || m === 'loader') { hasMech = true; break; }
+              }
+            }
+          }
+          el.mechParamBar.classList.toggle('hidden', !hasMech || state.tdMode);
+          el.mechParamBar.classList.toggle('inline-flex', hasMech && !state.tdMode);
+        }
       } else {
         let aliveTris = 0;
         for (const b of PhysicsEngine.bodies) {
@@ -5046,6 +5380,7 @@
       pushUndo();
       state.tris = p.tris;
       state.severedBonds = p.severed;
+      state.signalWires = p.wires ? [...p.wires] : [];
       state.autoIgnite = p.autoIgnite;
       state.currentName = p.name;
       state.currentGoal = p.goal || null;
@@ -5724,6 +6059,12 @@
       el.btnToolCarve.addEventListener('click', () => pickTool('carve', 340));
       el.btnToolBond.addEventListener('click', () => pickTool('bond', 640));
       el.btnToolWire.addEventListener('click', () => pickTool('wire', 680));
+
+      // 機構パラメーター設定イベント
+      if (el.mechReloadSelect) el.mechReloadSelect.addEventListener('change', e => { state.reloadInterval = parseFloat(e.target.value); SoundFX.click(560); });
+      if (el.mechLifetimeSelect) el.mechLifetimeSelect.addEventListener('change', e => { state.shellLifetime = parseFloat(e.target.value); SoundFX.click(560); });
+      if (el.mechAngleSelect) el.mechAngleSelect.addEventListener('change', e => { state.rotatorMode = e.target.value; SoundFX.click(560); });
+      if (el.mechSensorRangeSelect) el.mechSensorRangeSelect.addEventListener('change', e => { state.sensorRange = parseFloat(e.target.value); SoundFX.click(560); });
 
       el.btnBondCut.addEventListener('click', () => { state.bondSubMode = 'cut'; SoundFX.click(380); syncToolUI(false); });
       el.btnBondJoin.addEventListener('click', () => { state.bondSubMode = 'join'; SoundFX.click(640); syncToolUI(false); });
@@ -6459,6 +6800,63 @@
             events: [...debugEventLog],
             hints: (PhysicsAdvisor.hints || []).map(h => h.title || h.headline || h.phenomenon || JSON.stringify(h))
           };
+        },
+        mech: {
+          setParams: (opts = {}) => {
+            if (opts.reloadInterval !== undefined) {
+              state.reloadInterval = opts.reloadInterval;
+              const el = document.getElementById('mechReloadSelect');
+              if (el) el.value = String(opts.reloadInterval);
+            }
+            if (opts.shellLifetime !== undefined) {
+              state.shellLifetime = opts.shellLifetime;
+              const el = document.getElementById('mechLifetimeSelect');
+              if (el) el.value = String(opts.shellLifetime);
+            }
+            if (opts.rotatorMode !== undefined) {
+              state.rotatorMode = String(opts.rotatorMode);
+              const el = document.getElementById('mechAngleSelect');
+              if (el) el.value = String(opts.rotatorMode);
+            }
+            if (opts.sensorRange !== undefined) {
+              state.sensorRange = opts.sensorRange;
+              const el = document.getElementById('mechSensorRangeSelect');
+              if (el) el.value = String(opts.sensorRange);
+            }
+            updateTelemetryHUD();
+            drawWorld(PhysicsEngine.simTime || 0);
+          },
+          getState: () => {
+            const rs = PhysicsEngine.reloadSystem;
+            const gun = rs ? PhysicsEngine.bodies.find(b => b.id === rs.gunBodyId) : null;
+            const shells = PhysicsEngine.bodies.filter(b => b.isFiredShell);
+            const bar = document.getElementById('mechParamBar');
+            const gunMats = {};
+            if (gun) {
+              for (const t of gun.tris) {
+                if (t.hp > 0 && !t.consumed) gunMats[t.matId] = (gunMats[t.matId] || 0) + 1;
+              }
+            }
+            return {
+              simTime: Math.round(PhysicsEngine.simTime * 100) / 100,
+              mechBarVisible: Boolean(bar && !bar.classList.contains('hidden')),
+              hasSensor: Boolean(rs?.hasSensor),
+              hasRotator: Boolean(rs?.hasRotator),
+              hasLoader: Boolean(rs?.hasLoader),
+              sensorLocked: Boolean(rs?.sensorLocked),
+              shotsFired: rs ? rs.shotsFired : 0,
+              gunAlive: Boolean(gun),
+              gunAngleDeg: gun ? Math.round((gun.angle * 180 / Math.PI) * 10) / 10 : null,
+              targetAngleDeg: rs ? Math.round(((rs.targetAngle || 0) * 180 / Math.PI) * 10) / 10 : null,
+              gunHeat: gun ? Math.round(gun.heat || 0) : null,
+              gunMats,
+              shellCount: shells.length,
+              shellAges: shells.map(s => Math.round((s.shellAge || 0) * 100) / 100),
+              brokenBonds: PhysicsEngine.stats.brokenBonds,
+              destroyedTris: PhysicsEngine.stats.destroyedTris,
+              bodyCount: PhysicsEngine.bodies.length
+            };
+          }
         },
         td: {
           open: (preset = 'td_heavy', rate = 1.8) => {
