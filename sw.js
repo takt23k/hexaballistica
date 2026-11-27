@@ -1,4 +1,4 @@
-const CACHE_NAME = 'hexaballistica-v12';
+const CACHE_NAME = 'hexaballistica-v13';
 const ASSETS = ['./', './index.html', './manifest.webmanifest', './icon.svg'];
 
 self.addEventListener('install', event => {
